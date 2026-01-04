@@ -851,3 +851,154 @@ class Database:
             (total_sent, total_failed, broadcast_id)
         )
         await self._connection.commit()
+
+    # ==================== Admin UI Helper Operations ====================
+
+    async def get_user_count(self) -> int:
+        """Get total user count."""
+        async with self._connection.execute(
+            "SELECT COUNT(*) as count FROM users"
+        ) as cursor:
+            row = await cursor.fetchone()
+            return row["count"] if row else 0
+
+    async def get_admins(self) -> List[Dict[str, Any]]:
+        """Get all admins (alias for get_all_admins)."""
+        return await self.get_all_admins()
+
+    async def get_banned_user_count(self) -> int:
+        """Get count of banned users."""
+        async with self._connection.execute(
+            "SELECT COUNT(*) as count FROM users WHERE is_banned = 1"
+        ) as cursor:
+            row = await cursor.fetchone()
+            return row["count"] if row else 0
+
+    async def get_active_users_count(self, days: int = 7) -> int:
+        """Get count of users active within N days."""
+        async with self._connection.execute(
+            f"SELECT COUNT(*) as count FROM users WHERE last_activity >= datetime('now', '-{days} days')"
+        ) as cursor:
+            row = await cursor.fetchone()
+            return row["count"] if row else 0
+
+    async def get_recent_users(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recently registered users."""
+        async with self._connection.execute(
+            "SELECT * FROM users ORDER BY join_date DESC LIMIT ?",
+            (limit,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    async def get_buyers(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get top buyers with purchase stats."""
+        async with self._connection.execute(
+            """
+            SELECT 
+                u.*,
+                COUNT(t.id) as purchase_count,
+                COALESCE(SUM(t.amount), 0) as total_spent
+            FROM users u
+            JOIN transactions t ON u.user_id = t.user_id
+            WHERE t.status = 'PAID'
+            GROUP BY u.user_id
+            ORDER BY total_spent DESC
+            LIMIT ?
+            """,
+            (limit,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    async def get_stock_items(self, product_code: str) -> List[Dict[str, Any]]:
+        """Get all stock items for a product."""
+        async with self._connection.execute(
+            "SELECT * FROM stock WHERE product_code = ? ORDER BY added_at DESC",
+            (product_code,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    async def get_stock_by_id(self, stock_id: int) -> Optional[Dict[str, Any]]:
+        """Get stock item by ID (alias for get_stock_item)."""
+        return await self.get_stock_item(stock_id)
+
+    async def get_sold_stock_count(self, product_code: str) -> int:
+        """Get count of sold stock for a product."""
+        async with self._connection.execute(
+            "SELECT COUNT(*) as count FROM stock WHERE product_code = ? AND status = 'sold'",
+            (product_code,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return row["count"] if row else 0
+
+    async def delete_stock_item(self, stock_id: int) -> bool:
+        """Delete a stock item."""
+        await self._connection.execute(
+            "DELETE FROM stock WHERE id = ?",
+            (stock_id,)
+        )
+        await self._connection.commit()
+        return True
+
+    async def get_all_transactions(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get all transactions."""
+        async with self._connection.execute(
+            """
+            SELECT t.*, p.name as product_name, u.username
+            FROM transactions t
+            JOIN products p ON t.product_code = p.product_code
+            JOIN users u ON t.user_id = u.user_id
+            ORDER BY t.created_at DESC
+            LIMIT ?
+            """,
+            (limit,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    async def get_refund_requests(self) -> List[Dict[str, Any]]:
+        """Get pending refund requests."""
+        return await self.get_transactions_by_status("REFUND_REQUESTED", limit=100)
+
+    async def get_transaction_stats(self) -> Dict[str, Any]:
+        """Get transaction statistics."""
+        stats = {}
+        
+        # Count by status
+        async with self._connection.execute(
+            """
+            SELECT status, COUNT(*) as count
+            FROM transactions
+            GROUP BY status
+            """
+        ) as cursor:
+            rows = await cursor.fetchall()
+            for row in rows:
+                stats[row["status"]] = row["count"]
+        
+        # Revenue today
+        async with self._connection.execute(
+            """
+            SELECT COALESCE(SUM(amount), 0) as revenue
+            FROM transactions
+            WHERE status = 'PAID' AND date(paid_at) = date('now')
+            """
+        ) as cursor:
+            row = await cursor.fetchone()
+            stats["revenue_today"] = row["revenue"] if row else 0
+        
+        # Total revenue
+        async with self._connection.execute(
+            "SELECT COALESCE(SUM(amount), 0) as revenue FROM transactions WHERE status = 'PAID'"
+        ) as cursor:
+            row = await cursor.fetchone()
+            stats["revenue_total"] = row["revenue"] if row else 0
+        
+        return stats
+
+    async def get_statistics(self) -> Dict[str, Any]:
+        """Get comprehensive statistics (alias for get_stats)."""
+        return await self.get_stats()
+

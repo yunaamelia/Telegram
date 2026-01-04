@@ -147,18 +147,25 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     target = action_map.get(action)
     if target:
-        # Update callback data and re-route
-        query.data = target
+        # Store target action in context for routing
+        context.user_data["_quick_action_target"] = target
+        
         # Route to the appropriate handler based on target
         if target.startswith("admin:stock:"):
-            from handlers.admin.ui.stock_ui import handle_stock_action
-            await handle_stock_action(update, context)
+            from handlers.admin.ui.stock_ui import show_add_stock_form
+            await show_add_stock_form(update, context)
         elif target.startswith("admin:system:"):
             from handlers.admin.ui.system_ui import handle_system_action
+            # Create a mock data for the handler
+            context.user_data["_callback_data"] = target
             await handle_system_action(update, context)
         elif target.startswith("admin:trans:"):
-            from handlers.admin.ui.transaction_ui import handle_trans_action
-            await handle_trans_action(update, context)
+            from handlers.admin.ui.transaction_ui import show_all_transactions
+            await show_all_transactions(update, context)
+        
+        # Clean up
+        context.user_data.pop("_quick_action_target", None)
+        context.user_data.pop("_callback_data", None)
 
 
 async def handle_noop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
