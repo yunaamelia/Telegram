@@ -1,0 +1,22 @@
+# Core Bot Framework
+python-telegram-bot[job-queue]>=20.7
+
+# Async Operations
+aiohttp>=3.9.0
+aiosqlite>=0.19.0
+
+# Environment & Configuration
+python-dotenv>=1.0.0
+
+# Payment Processing
+requests>=2.31.0
+
+# Scheduling
+APScheduler>=3.10.4
+
+# Logging
+python-json-logger>=2.0.7
+
+# Utilities
+pytz>=2023.3
+pillow>=10.2.0
