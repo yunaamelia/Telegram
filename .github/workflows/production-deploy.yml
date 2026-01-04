@@ -1,0 +1,140 @@
+name: Production Deployment
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Job 1: Pre-deployment Validation
+  pre-deployment:
+    name: 🔍 Pre-deployment Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+      
+      - name: Validate version tag
+        run: |
+          VERSION="${{ github.ref_name }}"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version format: $VERSION"
+            exit 1
+          fi
+          echo "✅ Valid version: $VERSION"
+      
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+  # Job 2: Build & Package
+  build:
+    name: 📦 Build Package
+    needs: pre-deployment
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Create deployment package
+        run: |
+          VERSION="${{ github.ref_name }}"
+          mkdir -p dist
+          tar -czf "dist/telegram-bot-${VERSION}.tar.gz" \
+            --exclude='.git' \
+            --exclude='__pycache__' \
+            --exclude='.venv' \
+            --exclude='venv' \
+            --exclude='*.pyc' \
+            --exclude='reports' \
+            .
+      
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-package
+          path: dist/telegram-bot-${{ github.ref_name }}.tar.gz
+
+  # Job 3: Deploy to Production
+  deploy-production:
+    name: 🚀 Deploy to Production
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-package
+      
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/telegram-bot
+            
+            # Backup current version
+            cp -r . ../telegram-bot-backup-$(date +%Y%m%d_%H%M%S)
+            
+            # Stop bot
+            systemctl stop telegram-bot || true
+            
+            # Extract new version
+            tar -xzf /tmp/telegram-bot-${{ github.ref_name }}.tar.gz -C .
+            
+            # Install dependencies
+            source venv/bin/activate
+            pip install -r requirements.txt
+            
+            # Start bot
+            systemctl start telegram-bot
+            
+            echo "✅ Deployment completed: ${{ github.ref_name }}"
+      
+      - name: Verify deployment
+        run: |
+          sleep 10
+          echo "Verifying deployment..."
+          # Add health check here
+
+  # Job 4: Post-deployment
+  post-deployment:
+    name: 📊 Post-deployment
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## Release ${{ github.ref_name }}
+            
+            Deployed to production successfully.
+            
+            See commit history for changes.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

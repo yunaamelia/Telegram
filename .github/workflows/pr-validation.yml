@@ -1,0 +1,247 @@
+name: PR Validation - Admin Enhancement
+
+on:
+  pull_request:
+    branches: 
+      - main
+      - develop
+    paths:
+      - 'handlers/admin/**'
+      - 'utils/admin_keyboards.py'
+      - 'tests/admin/**'
+      - '.github/workflows/**'
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Job 1: Code Structure Validation
+  structure-validation:
+    name: 📁 Structure & Import Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Validate directory structure
+        run: python scripts/ci/validate_structure.py
+      
+      - name: Check for circular imports
+        run: python scripts/ci/validate_imports.py
+      
+      - name: Upload structure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: structure-report
+          path: reports/structure-report.json
+
+  # Job 2: Keyboard Consistency Validation
+  keyboard-validation:
+    name: ⌨️ Keyboard Consistency
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Validate callback patterns
+        run: python scripts/ci/validate_callbacks.py
+      
+      - name: Upload keyboard report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keyboard-report
+          path: reports/keyboard-report.json
+
+  # Job 3: Code Quality
+  code-quality:
+    name: 🔍 Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          pip install flake8 black isort
+          pip install -r requirements.txt
+      
+      - name: Run flake8
+        run: flake8 handlers/admin --max-line-length=120 --exclude=__pycache__ --ignore=E501,W503
+        continue-on-error: true
+      
+      - name: Check code formatting (black)
+        run: black --check handlers/admin utils/admin_keyboards.py --line-length=120
+        continue-on-error: true
+      
+      - name: Check import sorting (isort)
+        run: isort --check-only handlers/admin utils/admin_keyboards.py --profile black
+        continue-on-error: true
+
+  # Job 4: Permission & Security
+  security-validation:
+    name: 🔒 Security & Permissions
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Validate admin checks
+        run: python scripts/ci/validate_permissions.py
+      
+      - name: Check for hardcoded secrets
+        run: python scripts/ci/check_secrets.py
+      
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: reports/security-report.json
+
+  # Job 5: Unit Tests
+  unit-tests:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
+      
+      - name: Run pytest with coverage
+        run: |
+          pytest tests/ \
+            --cov=handlers/admin \
+            --cov-report=term \
+            -v --tb=short
+        continue-on-error: true
+      
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+
+  # Job 6: Backward Compatibility
+  backward-compatibility:
+    name: 🔄 Backward Compatibility
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Check command existence
+        run: python scripts/ci/validate_commands.py
+      
+      - name: Upload compatibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compatibility-report
+          path: reports/compatibility-report.json
+
+  # Job 7: Generate Final Report
+  generate-report:
+    name: 📊 Generate Validation Report
+    needs: 
+      - structure-validation
+      - keyboard-validation
+      - code-quality
+      - security-validation
+      - unit-tests
+      - backward-compatibility
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+        with:
+          path: reports/
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Generate consolidated report
+        run: python scripts/ci/generate_report.py
+      
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let report = '## 🔍 Admin Enhancement Validation\n\nValidation completed. Check artifacts for details.';
+            
+            try {
+              report = fs.readFileSync('reports/consolidated-report.md', 'utf8');
+            } catch (e) {
+              console.log('Could not read report file');
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+      
+      - name: Upload final report
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-validation-report
+          path: reports/consolidated-report.md

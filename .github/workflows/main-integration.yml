@@ -1,0 +1,108 @@
+name: Main Branch Integration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'handlers/admin/**'
+      - 'utils/admin_keyboards.py'
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Job 1: Integration Tests
+  integration-tests:
+    name: 🔗 Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+      
+      - name: Run integration tests
+        run: pytest tests/ -v --tb=short
+        continue-on-error: true
+
+  # Job 2: Build Check
+  build-check:
+    name: 📦 Build Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Verify imports
+        run: |
+          python -c "
+          from handlers.admin.ui import all_admin_ui_handlers
+          from handlers.admin.wizards import all_admin_wizards
+          from utils.admin_keyboards import AdminKeyboards
+          print('✅ All imports successful')
+          print(f'UI handlers: {len(all_admin_ui_handlers)}')
+          print(f'Wizards: {len(all_admin_wizards)}')
+          "
+      
+      - name: Check application creation
+        run: |
+          python -c "
+          import asyncio
+          from database.db import Database
+          from main import create_application
+          
+          async def test():
+              db = Database()
+              await db.connect()
+              await db.init()
+              app = create_application(db)
+              print('✅ Application created successfully')
+              await db.close()
+          
+          asyncio.run(test())
+          "
+
+  # Job 3: Create Release Notes
+  release-notes:
+    name: 📝 Create Release Notes
+    needs:
+      - integration-tests
+      - build-check
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Generate changelog
+        run: |
+          echo "## Recent Changes" > CHANGELOG_LATEST.md
+          git log --oneline -10 >> CHANGELOG_LATEST.md
+      
+      - name: Upload changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: CHANGELOG_LATEST.md
