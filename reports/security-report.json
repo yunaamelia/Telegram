@@ -1,0 +1,184 @@
+{
+  "validation": "permissions",
+  "total_issues": 22,
+  "errors": 0,
+  "warnings": 22,
+  "issues": [
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/products.py",
+      "line": 67,
+      "function": "receive_name",
+      "message": "Function 'receive_name' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/products.py",
+      "line": 87,
+      "function": "receive_description",
+      "message": "Function 'receive_description' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/products.py",
+      "line": 104,
+      "function": "receive_price",
+      "message": "Function 'receive_price' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/products.py",
+      "line": 121,
+      "function": "confirm_product",
+      "message": "Function 'confirm_product' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/products.py",
+      "line": 166,
+      "function": "cancel",
+      "message": "Function 'cancel' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/system.py",
+      "line": 160,
+      "function": "reset_confirm",
+      "message": "Function 'reset_confirm' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/broadcast.py",
+      "line": 49,
+      "function": "select_target",
+      "message": "Function 'select_target' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/broadcast.py",
+      "line": 78,
+      "function": "input_message",
+      "message": "Function 'input_message' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/broadcast.py",
+      "line": 115,
+      "function": "confirm_broadcast",
+      "message": "Function 'confirm_broadcast' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/broadcast.py",
+      "line": 159,
+      "function": "cancel",
+      "message": "Function 'cancel' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/wizards/product_wizard.py",
+      "line": 73,
+      "function": "receive_code",
+      "message": "Function 'receive_code' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/wizards/product_wizard.py",
+      "line": 117,
+      "function": "receive_name",
+      "message": "Function 'receive_name' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/wizards/product_wizard.py",
+      "line": 149,
+      "function": "receive_description",
+      "message": "Function 'receive_description' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/wizards/product_wizard.py",
+      "line": 174,
+      "function": "receive_price",
+      "message": "Function 'receive_price' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/wizards/product_wizard.py",
+      "line": 225,
+      "function": "confirm",
+      "message": "Function 'confirm' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/wizards/product_wizard.py",
+      "line": 285,
+      "function": "cancel",
+      "message": "Function 'cancel' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/wizards/stock_wizard.py",
+      "line": 134,
+      "function": "product_selected",
+      "message": "Function 'product_selected' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/wizards/stock_wizard.py",
+      "line": 175,
+      "function": "receive_stock_data",
+      "message": "Function 'receive_stock_data' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/wizards/stock_wizard.py",
+      "line": 243,
+      "function": "confirm",
+      "message": "Function 'confirm' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/wizards/stock_wizard.py",
+      "line": 307,
+      "function": "cancel",
+      "message": "Function 'cancel' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/ui/dashboard.py",
+      "line": 241,
+      "function": "admin_command",
+      "message": "Function 'admin_command' may be missing admin permission check"
+    },
+    {
+      "type": "missing_permission_check",
+      "severity": "warning",
+      "file": "handlers/admin/ui/confirmation.py",
+      "line": 104,
+      "function": "handle_cancel",
+      "message": "Function 'handle_cancel' may be missing admin permission check"
+    }
+  ]
+}

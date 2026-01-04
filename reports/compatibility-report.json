@@ -1,0 +1,10 @@
+{
+  "validation": "commands",
+  "total_commands": 21,
+  "found_commands": 21,
+  "missing_commands": 0,
+  "total_issues": 0,
+  "errors": 0,
+  "warnings": 0,
+  "issues": []
+}
