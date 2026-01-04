@@ -26,17 +26,24 @@ from utils.logger import get_logger
 
 # Import handlers
 from handlers.user.start import start_handler, main_menu_handler
-from handlers.user.buy import buy_handlers
-from handlers.user.history import history_handlers
-from handlers.user.help import help_handlers
-from handlers.user.callbacks import callback_query_handler, noop_handler
-
-from handlers.admin.stock import stock_handlers
-from handlers.admin.products import product_handlers
-from handlers.admin.transactions import transaction_handlers
-from handlers.admin.broadcast import broadcast_handlers
-from handlers.admin.admin_mgmt import admin_mgmt_handlers
-from handlers.admin.system import system_handlers
+from handlers.user import (
+    start_handler,
+    main_menu_handler,
+    buy_handlers,
+    history_handlers,
+    help_handlers,
+    callback_query_handler,
+    reply_keyboard_handler
+)
+from handlers.user.callbacks import noop_handler
+from handlers.admin import (
+    stock_handlers,
+    product_handlers,
+    transaction_handlers,
+    broadcast_handlers,
+    admin_mgmt_handlers,
+    system_handlers
+)
 from handlers.admin.security import security_handlers
 
 logger = get_logger("bot")
@@ -97,6 +104,9 @@ def create_application(db: Database) -> Application:
 
     app.add_handler(callback_query_handler)
     app.add_handler(noop_handler)
+    
+    # Reply keyboard handler (must be after all command handlers)
+    app.add_handler(reply_keyboard_handler)
 
     # Register admin handlers
     for handler in stock_handlers:

@@ -40,7 +40,7 @@ async def show_history(
     if is_command:
         await update.message.reply_text(
             text=text,
-            parse_mode="Markdown",
+            parse_mode="MarkdownV2",
             reply_markup=Keyboards.history_filters()
         )
     else:
@@ -49,7 +49,7 @@ async def show_history(
         await safe_edit_or_send(
             query, context, user.id,
             text=text,
-            parse_mode="Markdown",
+            parse_mode="MarkdownV2",
             reply_markup=Keyboards.history_filters()
         )
 
@@ -85,7 +85,7 @@ async def filter_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await safe_edit_or_send(
         query, context, user.id,
         text=text,
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.history_filters()
     )
 
@@ -122,7 +122,7 @@ async def show_transaction_detail(update: Update, context: ContextTypes.DEFAULT_
     await safe_edit_or_send(
         query, context, user.id,
         text=text,
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.transaction_actions(transaction_id, tx["status"])
     )
 
@@ -171,7 +171,7 @@ async def download_account_details(update: Update, context: ContextTypes.DEFAULT
             paid_at=tx.get("paid_at"),
             stock_item=stock_item
         ),
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.navigation(back_target="history")
     )
 
@@ -195,10 +195,10 @@ async def request_refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if success:
         await safe_edit_or_send(
             query, context, user.id,
-            text=f"💰 **Refund Requested**\n\n"
+            text=f"💰 *Refund Requested*\n\n"
             f"Order ID: `{transaction_id}`\n\n"
             f"{message}",
-            parse_mode="Markdown",
+            parse_mode="MarkdownV2",
             reply_markup=Keyboards.navigation(back_target="history")
         )
 

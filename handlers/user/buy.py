@@ -3,14 +3,14 @@ Purchase flow handlers for FRIENDS Store Telegram Bot.
 """
 
 from telegram import Update
-from telegram.ext import ContextTypes, CallbackQueryHandler
+from telegram.ext import ContextTypes, CallbackQueryHandler, CommandHandler
 
 from config import config
 from database.db import Database
 from services.payment import PaymentService
 from utils.keyboards import Keyboards
 from utils.formatters import (
-    format_product_list_header,
+    format_product_list,
     format_product_detail,
     format_payment_created
 )
@@ -22,15 +22,14 @@ logger = get_logger("bot")
 
 
 async def show_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show product list."""
+    """Show product list (callback query)."""
     query = update.callback_query
     await query.answer()
     user = update.effective_user
 
     db: Database = context.bot_data["db"]
-
-    # Get active products
     products = await db.get_active_products()
+    page = context.user_data.get("product_page", 1)
 
     if not products:
         await safe_edit_or_send(
@@ -41,11 +40,38 @@ async def show_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
         return
 
+    # Store products for numbered buttons
+    context.user_data["products"] = products
+
     await safe_edit_or_send(
         query, context, user.id,
-        text=format_product_list_header(),
-        parse_mode="Markdown",
-        reply_markup=Keyboards.product_list(products)
+        text=format_product_list(products, page),
+        parse_mode="MarkdownV2",
+        reply_markup=Keyboards.product_list(products, page)
+    )
+
+
+async def show_products_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/beli command - show product list."""
+    user = update.effective_user
+    db: Database = context.bot_data["db"]
+    products = await db.get_active_products()
+
+    if not products:
+        await update.message.reply_text(
+            "😔 Maaf, tidak ada produk yang tersedia saat ini.\n\n"
+            "Cek kembali nanti!"
+        )
+        return
+
+    # Store products and reset page
+    context.user_data["products"] = products
+    context.user_data["product_page"] = 1
+
+    await update.message.reply_text(
+        text=format_product_list(products, 1),
+        parse_mode="MarkdownV2",
+        reply_markup=Keyboards.product_list(products, 1)
     )
 
 
@@ -76,7 +102,7 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
     await safe_edit_or_send(
         query, context, user.id,
         text=format_product_detail(product, stock_count),
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.product_detail(
             product_code=product_code,
             has_stock=stock_count > 0,
@@ -155,7 +181,7 @@ async def initiate_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     amount=product["price"],
                     expired_at=expired_at
                 ),
-                parse_mode="Markdown",
+                parse_mode="MarkdownV2",
                 reply_markup=Keyboards.payment_pending(qris_tx.transaction_id)
             )
             return
@@ -171,7 +197,7 @@ async def initiate_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             amount=product["price"],
             expired_at=expired_at
         ),
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.payment_pending(qris_tx.transaction_id)
     )
 
@@ -208,7 +234,7 @@ async def check_payment_status(update: Update, context: ContextTypes.DEFAULT_TYP
                 paid_at=tx_data.get("paid_at"),
                 stock_item=stock_item or {}
             ),
-            parse_mode="Markdown",
+            parse_mode="MarkdownV2",
             reply_markup=Keyboards.navigation(back_target="main")
         )
 
@@ -228,7 +254,7 @@ async def check_payment_status(update: Update, context: ContextTypes.DEFAULT_TYP
                 product_name=product.get("name", "") if product else "",
                 amount=tx.get("amount", 0)
             ),
-            parse_mode="Markdown",
+            parse_mode="MarkdownV2",
             reply_markup=Keyboards.navigation(back_target="main")
         )
 
@@ -272,8 +298,41 @@ async def cancel_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.answer(f"❌ {message}", show_alert=True)
 
 
+async def cekbayar_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/cekbayar command - check payment status."""
+    user = update.effective_user
+    args = context.args
+
+    if not args:
+        await update.message.reply_text(
+            "💳 *Cek Status Pembayaran*\n\n"
+            "Gunakan: `/cekbayar <order_id>`\n\n"
+            "Contoh: `/cekbayar FRIENDS-1234567890-ABCD`",
+            parse_mode="MarkdownV2"
+        )
+        return
+
+    order_id = args[0]
+    db: Database = context.bot_data["db"]
+    payment_service = PaymentService(db)
+
+    status, tx_data = await payment_service.check_payment_status(order_id)
+
+    status_emoji = {
+        "PAID": "✅", "PENDING": "⏳", "EXPIRED": "❌", "NOT_FOUND": "❓"
+    }
+
+    await update.message.reply_text(
+        f"{status_emoji.get(status, '❓')} *Status:* `{status}`\n"
+        f"🆔 *Order ID:* `{order_id}`",
+        parse_mode="MarkdownV2"
+    )
+
+
 # Handler exports
 buy_handlers = [
+    CommandHandler("beli", show_products_command),
+    CommandHandler("cekbayar", cekbayar_command),
     CallbackQueryHandler(show_products, pattern=r"^nav:products$"),
     CallbackQueryHandler(show_product_detail, pattern=r"^product:"),
     CallbackQueryHandler(initiate_purchase, pattern=r"^buy:"),

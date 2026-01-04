@@ -5,6 +5,7 @@ from handlers.user.buy import buy_handlers
 from handlers.user.history import history_handlers
 from handlers.user.help import help_handlers
 from handlers.user.callbacks import callback_query_handler
+from handlers.user.reply_handler import reply_keyboard_handler
 
 __all__ = [
     "start_handler",
@@ -12,5 +13,7 @@ __all__ = [
     "buy_handlers",
     "history_handlers",
     "help_handlers",
-    "callback_query_handler"
+    "callback_query_handler",
+    "reply_keyboard_handler"
 ]
+

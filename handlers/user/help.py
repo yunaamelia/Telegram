@@ -20,7 +20,7 @@ logger = get_logger("bot")
 
 
 HELP_MAIN = """
-❓ **Pusat Bantuan**
+❓ *Pusat Bantuan*
 
 Pilih kategori bantuan yang kamu butuhkan:
 """
@@ -30,7 +30,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Handle /help command."""
     await update.message.reply_text(
         text=HELP_MAIN,
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.help_categories()
     )
 
@@ -44,7 +44,7 @@ async def show_help_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await safe_edit_or_send(
         query, context, user.id,
         text=HELP_MAIN,
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.help_categories()
     )
 
@@ -58,7 +58,7 @@ async def show_help_order(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await safe_edit_or_send(
         query, context, user.id,
         text=format_help_order(),
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.help_back()
     )
 
@@ -72,7 +72,7 @@ async def show_help_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await safe_edit_or_send(
         query, context, user.id,
         text=format_help_payment(),
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.help_back()
     )
 
@@ -86,7 +86,7 @@ async def show_help_faq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await safe_edit_or_send(
         query, context, user.id,
         text=format_help_faq(),
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.help_back()
     )
 
@@ -100,7 +100,7 @@ async def show_help_contact(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await safe_edit_or_send(
         query, context, user.id,
         text=format_help_contact(config.bot.support_username),
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.help_back()
     )
 

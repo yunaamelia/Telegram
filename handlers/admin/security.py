@@ -27,9 +27,9 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     args = context.args
     if len(args) < 2:
         await update.message.reply_text(
-            "🚫 **Ban User**\n\n"
+            "🚫 *Ban User*\n\n"
             "Usage: `/ban <user_id> <reason>`",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
         return
 
@@ -68,7 +68,7 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await update.message.reply_text(
         f"🚫 User `{user_id}` (@{user.get('username', 'N/A')}) diblokir.\n"
         f"Alasan: {reason}",
-        parse_mode="Markdown"
+        parse_mode="MarkdownV2"
     )
 
 
@@ -80,7 +80,7 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/unban <user_id>`", parse_mode="Markdown")
+        await update.message.reply_text("Usage: `/unban <user_id>`", parse_mode="MarkdownV2")
         return
 
     try:
@@ -106,7 +106,7 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         details=f"Unbanned by {update.effective_user.id}"
     )
 
-    await update.message.reply_text(f"✅ User `{user_id}` berhasil di-unban.", parse_mode="Markdown")
+    await update.message.reply_text(f"✅ User `{user_id}` berhasil di-unban.", parse_mode="MarkdownV2")
 
 
 async def banlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -123,7 +123,7 @@ async def banlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("🚫 Tidak ada user yang diblokir.")
         return
 
-    lines = ["🚫 **Banned Users**\n"]
+    lines = ["🚫 *Banned Users*\n"]
 
     for user in banned_users:
         lines.append(
@@ -131,7 +131,7 @@ async def banlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             f"  Reason: {user.get('ban_reason', 'N/A')}\n"
         )
 
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
 
 
 async def security_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -147,9 +147,9 @@ async def security_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     banned = await db.get_banned_users()
 
     lines = [
-        "🔒 **Security Dashboard**\n",
+        "🔒 *Security Dashboard*\n",
         f"🚫 Banned Users: {len(banned)}\n",
-        "📋 **Recent Events:**\n"
+        "📋 *Recent Events:*\n"
     ]
 
     if logs:
@@ -161,7 +161,7 @@ async def security_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     else:
         lines.append("_No recent events_")
 
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
 
 
 async def userstats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -172,7 +172,7 @@ async def userstats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/userstats <user_id>`", parse_mode="Markdown")
+        await update.message.reply_text("Usage: `/userstats <user_id>`", parse_mode="MarkdownV2")
         return
 
     try:
@@ -196,7 +196,7 @@ async def userstats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     is_banned, ban_reason = await db.is_user_banned(user_id)
 
     text = (
-        f"👤 **User Statistics**\n\n"
+        f"👤 *User Statistics*\n\n"
         f"🆔 ID: `{user_id}`\n"
         f"👤 Username: @{user.get('username', 'N/A')}\n"
         f"📛 Name: {user.get('first_name', '')} {user.get('last_name', '')}\n"
@@ -208,12 +208,12 @@ async def userstats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         text += f"📝 Ban Reason: {ban_reason}\n"
 
     text += (
-        f"\n📊 **Transaction Stats:**\n"
+        f"\n📊 *Transaction Stats:*\n"
         f"✅ Total Paid: {paid_count}\n"
         f"💰 Total Spent: Rp {total_spent:,}\n"
     )
 
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.message.reply_text(text, parse_mode="MarkdownV2")
 
 
 # Handler exports

@@ -38,11 +38,11 @@ async def addproduct_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     args = context.args
     if not args:
         await update.message.reply_text(
-            "🛍️ **Add Product Wizard**\n\n"
+            "🛍️ *Add Product Wizard*\n\n"
             "Masukkan product code (lowercase, underscore ok):\n"
             "Contoh: `github_student_fresh`\n\n"
             "Ketik /cancel untuk membatalkan.",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
         return NAME
 
@@ -59,7 +59,7 @@ async def addproduct_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await update.message.reply_text(
         f"✅ Product code: `{product_code}`\n\n"
         "Masukkan nama produk:",
-        parse_mode="Markdown"
+        parse_mode="MarkdownV2"
     )
     return DESCRIPTION
 
@@ -113,7 +113,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await update.message.reply_text(
         "Masukkan harga (dalam Rupiah):\n"
         "Contoh: `50000` atau `50.000`",
-        parse_mode="Markdown"
+        parse_mode="MarkdownV2"
     )
     return CONFIRM
 
@@ -137,7 +137,7 @@ async def confirm_product(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if existing:
         await update.message.reply_text(
             f"❌ Product code `{product_data['product_code']}` sudah ada!",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
         context.user_data.clear()
         return ConversationHandler.END
@@ -151,11 +151,11 @@ async def confirm_product(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
 
     await update.message.reply_text(
-        f"✅ **Produk Berhasil Ditambahkan!**\n\n"
+        f"✅ *Produk Berhasil Ditambahkan!*\n\n"
         f"📦 Code: `{product_data['product_code']}`\n"
         f"🏷️ Name: {product_data['name']}\n"
         f"💰 Price: {format_currency(product_data['price'])}",
-        parse_mode="Markdown"
+        parse_mode="MarkdownV2"
     )
 
     context.user_data.clear()
@@ -178,13 +178,13 @@ async def editproduct_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     args = context.args
     if len(args) < 3:
         await update.message.reply_text(
-            "📝 **Edit Product**\n\n"
+            "📝 *Edit Product*\n\n"
             "Usage: `/editproduct <product_code> <field> <value>`\n\n"
             "Fields: `name`, `description`, `price`, `active`\n\n"
             "Examples:\n"
             "`/editproduct github_student_fresh price 55000`\n"
             "`/editproduct github_student_fresh active false`",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
         return
 
@@ -222,7 +222,7 @@ async def editproduct_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     await update.message.reply_text(
         f"✅ Produk `{product_code}` berhasil diupdate!\n"
         f"Field: {field} = {value}",
-        parse_mode="Markdown"
+        parse_mode="MarkdownV2"
     )
 
 
@@ -234,7 +234,7 @@ async def deleteproduct_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/deleteproduct <product_code>`", parse_mode="Markdown")
+        await update.message.reply_text("Usage: `/deleteproduct <product_code>`", parse_mode="MarkdownV2")
         return
 
     product_code = args[0].lower()
@@ -249,7 +249,7 @@ async def deleteproduct_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     await update.message.reply_text(
         f"✅ Produk `{product_code}` telah dinonaktifkan.",
-        parse_mode="Markdown"
+        parse_mode="MarkdownV2"
     )
 
 
@@ -266,16 +266,16 @@ async def listproducts_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("📦 Tidak ada produk.")
         return
 
-    lines = ["🛍️ **Daftar Produk**\n"]
+    lines = ["🛍️ *Daftar Produk*\n"]
 
     for p in products:
         status = "🟢" if p["is_active"] else "🔴"
         lines.append(
-            f"{status} **{p['name']}**\n"
+            f"{status} *{p['name']}*\n"
             f"   `{p['product_code']}` | {format_currency(p['price'])}\n"
         )
 
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
 
 
 # Conversation handler for add product

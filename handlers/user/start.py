@@ -3,18 +3,66 @@ Start command and main menu handler for FRIENDS Store Telegram Bot.
 """
 
 import os
-from telegram import Update
+from telegram import Update, BotCommand, BotCommandScopeChat
 from telegram.ext import ContextTypes, CommandHandler
 
 from config import config
 from database.db import Database
 from utils.keyboards import Keyboards
+from utils.reply_keyboards import UserReplyKeyboard, AdminReplyKeyboard
 from utils.formatters import format_welcome
 from utils.messages import safe_edit_or_send
 from utils.logger import get_logger
 from utils.rate_limiter import rate_limiter
 
 logger = get_logger("bot")
+
+
+# User commands (5)
+USER_COMMANDS = [
+    BotCommand("start", "🏠 Menu Utama"),
+    BotCommand("beli", "🛒 Beli Produk"),
+    BotCommand("history", "📜 Riwayat Transaksi"),
+    BotCommand("cekbayar", "💳 Cek Pembayaran"),
+    BotCommand("help", "❓ Bantuan"),
+]
+
+# Admin commands (12)
+ADMIN_COMMANDS = [
+    BotCommand("addstock", "📦 Tambah Stock"),
+    BotCommand("addproduct", "➕ Tambah Produk"),
+    BotCommand("editproduct", "✏️ Edit Produk"),
+    BotCommand("checkstock", "📋 Cek Stock"),
+    BotCommand("deleteproduct", "🗑️ Hapus Produk"),
+    BotCommand("listproducts", "📃 Daftar Produk"),
+    BotCommand("transactions", "💰 Transaksi"),
+    BotCommand("refunds", "💸 Refunds"),
+    BotCommand("stats", "📊 Statistik"),
+    BotCommand("security", "🔒 Keamanan"),
+    BotCommand("addadmin", "👥 Tambah Admin"),
+    BotCommand("broadcast", "📢 Broadcast"),
+]
+
+
+async def set_dynamic_commands(
+    bot,
+    user_id: int,
+    is_admin: bool = False
+) -> None:
+    """Set dynamic commands for a specific user based on role."""
+    try:
+        scope = BotCommandScopeChat(chat_id=user_id)
+        
+        if is_admin:
+            # Admin gets both user and admin commands
+            commands = USER_COMMANDS + ADMIN_COMMANDS
+        else:
+            commands = USER_COMMANDS
+        
+        await bot.set_my_commands(commands, scope=scope)
+        logger.debug(f"Set commands for user {user_id}, admin={is_admin}")
+    except Exception as e:
+        logger.warning(f"Failed to set commands for user {user_id}: {e}")
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -48,6 +96,21 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         last_name=user.last_name
     )
 
+    # Check if admin
+    is_admin = await db.is_admin(user.id)
+
+    # Set dynamic commands based on role
+    await set_dynamic_commands(context.bot, user.id, is_admin)
+
+    # Choose reply keyboard based on role
+    if is_admin:
+        context.user_data["admin_kb_page"] = 1
+        reply_kb = AdminReplyKeyboard.build(1)
+        role_text = "👑 *Admin Mode*\n\n"
+    else:
+        reply_kb = UserReplyKeyboard.build()
+        role_text = ""
+
     # Send welcome message
     welcome_text = format_welcome(config.store.name, user.first_name)
 
@@ -58,19 +121,30 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             with open(logo_path, "rb") as photo:
                 await update.message.reply_photo(
                     photo=photo,
-                    caption=welcome_text,
-                    parse_mode="Markdown",
-                    reply_markup=Keyboards.main_menu()
+                    caption=f"{role_text}{welcome_text}",
+                    parse_mode="MarkdownV2",
+                    reply_markup=Keyboards.main_menu()  # Inline keyboard
                 )
-                return
         except Exception as e:
             logger.warning(f"Failed to send logo: {e}")
-
-    # Fallback to text only
+            # Fallback to text with inline keyboard
+            await update.message.reply_text(
+                text=f"{role_text}{welcome_text}",
+                parse_mode="MarkdownV2",
+                reply_markup=Keyboards.main_menu()  # Inline keyboard
+            )
+    else:
+        # Text only with inline keyboard
+        await update.message.reply_text(
+            text=f"{role_text}{welcome_text}",
+            parse_mode="MarkdownV2",
+            reply_markup=Keyboards.main_menu()  # Inline keyboard
+        )
+    
+    # Send reply keyboard in separate message
     await update.message.reply_text(
-        text=welcome_text,
-        parse_mode="Markdown",
-        reply_markup=Keyboards.main_menu()
+        "⬇️ Gunakan menu di bawah untuk navigasi cepat:",
+        reply_markup=reply_kb
     )
 
 
@@ -85,7 +159,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await safe_edit_or_send(
         query, context, user.id,
         text=welcome_text,
-        parse_mode="Markdown",
+        parse_mode="MarkdownV2",
         reply_markup=Keyboards.main_menu()
     )
 
@@ -98,11 +172,12 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(
         "❌ Operasi dibatalkan.\n\n"
         "Gunakan /start untuk kembali ke menu utama.",
-        parse_mode="Markdown"
+        parse_mode="MarkdownV2"
     )
 
 
 # Handler exports
 start_handler = CommandHandler("start", start_command)
 main_menu_handler = CommandHandler("cancel", cancel_command)
+
 

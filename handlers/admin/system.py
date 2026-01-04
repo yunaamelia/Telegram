@@ -42,7 +42,7 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     text = format_stats(stats)
 
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.message.reply_text(text, parse_mode="MarkdownV2")
 
 
 async def logs_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -71,9 +71,9 @@ async def logs_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             log_text = log_text[-4000:]
 
         await update.message.reply_text(
-            f"📝 **Recent Logs** (last {len(recent)} lines)\n\n"
+            f"📝 *Recent Logs* (last {len(recent)} lines)\n\n"
             f"```\n{log_text}\n```",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
 
     except Exception as e:
@@ -130,9 +130,9 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if context.user_data.get("reset_confirm") != "RESET":
         context.user_data["reset_confirm"] = "pending"
         await update.message.reply_text(
-            "⚠️ **WARNING: This will delete ALL data!**\n\n"
+            "⚠️ *WARNING: This will delete ALL data!*\n\n"
             "Type `/reset CONFIRM` to proceed.",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
         return
 
@@ -177,7 +177,7 @@ async def testpayment_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/testpayment <transaction_id>`", parse_mode="Markdown")
+        await update.message.reply_text("Usage: `/testpayment <transaction_id>`", parse_mode="MarkdownV2")
         return
 
     transaction_id = args[0]
@@ -195,7 +195,7 @@ async def testpayment_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text(
             f"✅ Payment simulated for `{transaction_id}`\n"
             f"Status: PAID",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
     else:
         await update.message.reply_text(f"❌ {message}")

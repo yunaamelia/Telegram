@@ -27,7 +27,7 @@ async def handle_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await safe_edit_or_send(
             query, context, user.id,
             text=format_welcome(config.store.name, user.first_name),
-            parse_mode="Markdown",
+            parse_mode="MarkdownV2",
             reply_markup=Keyboards.main_menu()
         )
     # Other nav targets handled by their respective handlers

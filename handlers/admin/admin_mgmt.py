@@ -29,10 +29,10 @@ async def addadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     args = context.args
     if not args:
         await update.message.reply_text(
-            "👤 **Add Admin**\n\n"
+            "👤 *Add Admin*\n\n"
             "Usage: `/addadmin <user_id>`\n\n"
             "User harus sudah memulai bot untuk bisa dijadikan admin.",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
         return
 
@@ -71,7 +71,7 @@ async def addadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await update.message.reply_text(
         f"✅ User `{user_id}` (@{user.get('username', 'N/A')}) "
         f"ditambahkan sebagai admin.",
-        parse_mode="Markdown"
+        parse_mode="MarkdownV2"
     )
 
 
@@ -83,7 +83,7 @@ async def removeadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/removeadmin <user_id>`", parse_mode="Markdown")
+        await update.message.reply_text("Usage: `/removeadmin <user_id>`", parse_mode="MarkdownV2")
         return
 
     try:
@@ -100,7 +100,7 @@ async def removeadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     success = await db.remove_admin(user_id)
     if success:
-        await update.message.reply_text(f"✅ Admin `{user_id}` dihapus.", parse_mode="Markdown")
+        await update.message.reply_text(f"✅ Admin `{user_id}` dihapus.", parse_mode="MarkdownV2")
     else:
         await update.message.reply_text("❌ Gagal menghapus admin atau tidak ditemukan.")
 
@@ -120,7 +120,7 @@ async def listadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.message.reply_text("👤 Tidak ada admin terdaftar.")
         return
 
-    lines = ["👥 **Daftar Admin**\n"]
+    lines = ["👥 *Daftar Admin*\n"]
 
     for admin in admins:
         role_emoji = "👑" if admin["role"] == "super_admin" else "👤"
@@ -132,7 +132,7 @@ async def listadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             f"   Role: {admin['role']}\n"
         )
 
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
 
 
 # Handler exports

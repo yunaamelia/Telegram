@@ -45,7 +45,7 @@ async def transactions_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("📋 Tidak ada transaksi.")
         return
 
-    lines = ["📋 **Transaksi Terbaru**\n"]
+    lines = ["📋 *Transaksi Terbaru*\n"]
 
     for tx in transactions[:20]:
         status_emoji = {
@@ -62,7 +62,7 @@ async def transactions_command(update: Update, context: ContextTypes.DEFAULT_TYP
             f"   @{tx.get('username', 'N/A')} | {format_currency(tx['amount'])}\n"
         )
 
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
 
 
 async def refunds_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -79,7 +79,7 @@ async def refunds_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("💰 Tidak ada permintaan refund.")
         return
 
-    lines = ["💰 **Pending Refund Requests**\n"]
+    lines = ["💰 *Pending Refund Requests*\n"]
 
     for tx in refunds:
         lines.append(
@@ -89,11 +89,11 @@ async def refunds_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             f"   Amount: {format_currency(tx['amount'])}\n"
         )
 
-    lines.append("\n**Commands:**")
+    lines.append("\n*Commands:*")
     lines.append("`/approverefund <transaction_id>`")
     lines.append("`/rejectrefund <transaction_id> <reason>`")
 
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
 
 
 async def approverefund_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -104,7 +104,7 @@ async def approverefund_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/approverefund <transaction_id>`", parse_mode="Markdown")
+        await update.message.reply_text("Usage: `/approverefund <transaction_id>`", parse_mode="MarkdownV2")
         return
 
     transaction_id = args[0]
@@ -129,7 +129,7 @@ async def approverefund_command(update: Update, context: ContextTypes.DEFAULT_TY
     await update.message.reply_text(
         f"✅ Refund disetujui untuk transaksi `{transaction_id}`\n"
         f"User {tx['user_id']} telah dinotifikasi.",
-        parse_mode="Markdown"
+        parse_mode="MarkdownV2"
     )
 
 
@@ -143,7 +143,7 @@ async def rejectrefund_command(update: Update, context: ContextTypes.DEFAULT_TYP
     if len(args) < 2:
         await update.message.reply_text(
             "Usage: `/rejectrefund <transaction_id> <reason>`",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
         return
 
@@ -172,7 +172,7 @@ async def rejectrefund_command(update: Update, context: ContextTypes.DEFAULT_TYP
         f"❌ Refund ditolak untuk transaksi `{transaction_id}`\n"
         f"Reason: {reason}\n"
         f"User {tx['user_id']} telah dinotifikasi.",
-        parse_mode="Markdown"
+        parse_mode="MarkdownV2"
     )
 
 

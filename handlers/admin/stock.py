@@ -34,14 +34,14 @@ async def addstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     if not args or len(args) < 2:
         await update.message.reply_text(
-            "📦 **Add Stock**\n\n"
-            "**Usage:**\n"
+            "📦 *Add Stock*\n\n"
+            "*Usage:*\n"
             "`/addstock <product_code> <email:password[:2fa][:notes]>`\n\n"
-            "**Example:**\n"
+            "*Example:*\n"
             "`/addstock github_student_fresh user@mail.com:pass123:JBSWY3DP:Valid Dec 2026`\n\n"
-            "**Bulk Upload:**\n"
+            "*Bulk Upload:*\n"
             "Upload a `.txt` file with entries (one per line) with product code as caption.",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
         return
 
@@ -80,7 +80,7 @@ async def addstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             f"📦 Produk: {product['name']}\n"
             f"📧 Email: `{data['email'][:10]}...`\n"
             f"📊 Total Stock: {stock_count}",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
     except Exception as e:
         logger.error(f"Failed to add stock: {e}")
@@ -104,7 +104,7 @@ async def handle_stock_file(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.message.reply_text(
             "❌ Caption harus berisi product_code\n"
             "Contoh: `github_student_fresh`",
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
         return
 
@@ -135,16 +135,16 @@ async def handle_stock_file(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     )
 
     result_text = (
-        f"📦 **Bulk Stock Upload Complete**\n\n"
+        f"📦 *Bulk Stock Upload Complete*\n\n"
         f"📊 Produk: {product['name']}\n"
         f"✅ Berhasil: {success}\n"
         f"❌ Gagal: {errors}\n"
     )
 
     if error_msgs and len(error_msgs) <= 5:
-        result_text += "\n**Errors:**\n" + "\n".join(error_msgs[:5])
+        result_text += "\n*Errors:*\n" + "\n".join(error_msgs[:5])
 
-    await update.message.reply_text(result_text, parse_mode="Markdown")
+    await update.message.reply_text(result_text, parse_mode="MarkdownV2")
 
 
 async def checkstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -163,7 +163,7 @@ async def checkstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     text = format_stock_summary(stock_summary)
 
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.message.reply_text(text, parse_mode="MarkdownV2")
 
 
 async def stockdetails_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -174,7 +174,7 @@ async def stockdetails_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/stockdetails <product_code>`", parse_mode="Markdown")
+        await update.message.reply_text("Usage: `/stockdetails <product_code>`", parse_mode="MarkdownV2")
         return
 
     product_code = args[0].lower()
@@ -186,7 +186,7 @@ async def stockdetails_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(f"📦 Tidak ada stock tersedia untuk `{product_code}`")
         return
 
-    lines = [f"📦 **Stock Details: {product_code}**\n", f"Total: {len(stock_items)} items\n"]
+    lines = [f"📦 *Stock Details: {product_code}*\n", f"Total: {len(stock_items)} items\n"]
 
     for i, item in enumerate(stock_items[:20], 1):
         email = item["email"]
@@ -197,7 +197,7 @@ async def stockdetails_command(update: Update, context: ContextTypes.DEFAULT_TYP
     if len(stock_items) > 20:
         lines.append(f"\n_...dan {len(stock_items) - 20} lainnya_")
 
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
 
 
 # Handler exports
