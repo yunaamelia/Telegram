@@ -46,6 +46,10 @@ from handlers.admin import (
 )
 from handlers.admin.security import security_handlers
 
+# Admin UI handlers and wizards
+from handlers.admin.ui import all_admin_ui_handlers
+from handlers.admin.wizards import all_admin_wizards
+
 logger = get_logger("bot")
 
 
@@ -128,6 +132,14 @@ def create_application(db: Database) -> Application:
         app.add_handler(handler)
 
     for handler in security_handlers:
+        app.add_handler(handler)
+
+    # Register admin UI handlers (inline keyboard navigation)
+    for handler in all_admin_ui_handlers:
+        app.add_handler(handler)
+
+    # Register admin wizards (conversation handlers - must be after UI handlers)
+    for handler in all_admin_wizards:
         app.add_handler(handler)
 
     logger.info("All handlers registered")
