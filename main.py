@@ -108,9 +108,8 @@ def create_application(db: Database) -> Application:
 
     app.add_handler(callback_query_handler)
     app.add_handler(noop_handler)
-    
-    # Reply keyboard handler (must be after all command handlers)
-    app.add_handler(reply_keyboard_handler)
+
+
 
     # Register admin handlers
     for handler in stock_handlers:
@@ -141,6 +140,9 @@ def create_application(db: Database) -> Application:
     # Register admin wizards (conversation handlers - must be after UI handlers)
     for handler in all_admin_wizards:
         app.add_handler(handler)
+
+    # Reply keyboard handler (must be after all wizards to allow Regex entry points)
+    app.add_handler(reply_keyboard_handler)
 
     logger.info("All handlers registered")
 
@@ -226,5 +228,3 @@ if __name__ == "__main__":
     except Exception as e:
         logger.exception(f"Fatal error: {e}")
         raise
-
-

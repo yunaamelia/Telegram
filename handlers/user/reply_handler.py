@@ -91,19 +91,52 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
     if is_admin and text in AdminReplyKeyboard.HANDLERS:
         action = AdminReplyKeyboard.HANDLERS[text]
 
-        # Map action to appropriate handler
+        # New UI Handlers
+        if action == "dashboard":
+            from handlers.admin.ui.dashboard import show_dashboard
+            await show_dashboard(update, context)
+            return
+
+        # Direct Menu Mappings using AdminKeyboards
+        from utils.admin_keyboards import AdminKeyboards
+
+        if action == "system":
+            await update.message.reply_text(
+                "*⚙️ System & Settings*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_",
+                parse_mode="MarkdownV2",
+                reply_markup=AdminKeyboards.system_menu()
+            )
+            return
+
+        if action == "transactions":
+            await update.message.reply_text(
+                "*💰 Transactions*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_",
+                parse_mode="MarkdownV2",
+                reply_markup=AdminKeyboards.transaction_management_menu()
+            )
+            return
+
+        if action == "checkstock":
+            await update.message.reply_text(
+                "*📦 Stock Management*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_",
+                parse_mode="MarkdownV2",
+                reply_markup=AdminKeyboards.stock_management_menu()
+            )
+            return
+
+        if action == "users":
+            await update.message.reply_text(
+                "*👥 User Management*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_",
+                parse_mode="MarkdownV2",
+                reply_markup=AdminKeyboards.user_management_menu()
+            )
+            return
+
+        # Legacy/Other Commands fallback
         admin_commands = {
-            "addstock": "/addstock",
-            "addproduct": "/addproduct",
-            "editproduct": "/editproduct",
-            "checkstock": "/checkstock",
-            "transactions": "/transactions",
-            "refunds": "/refunds",
             "stats": "/stats",
             "security": "/security",
             "addadmin": "/addadmin",
-            "broadcast": "/broadcast",
-            "logs": "/logs",
             "backup": "/backup",
             "deleteproduct": "/deleteproduct",
             "listproducts": "/listproducts",

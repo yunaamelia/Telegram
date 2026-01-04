@@ -2,20 +2,19 @@
 Broadcast handlers for FRIENDS Store Telegram Bot.
 """
 
-from telegram import Update
-from telegram.ext import (
-    ContextTypes,
-    CommandHandler,
-    ConversationHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    filters
-)
-
 from database.db import Database
 from services.notification import NotificationService
-from utils.keyboards import Keyboards
+from telegram import Update
+from telegram.ext import (
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 from utils.formatters import escape_md
+from utils.keyboards import Keyboards
 from utils.logger import get_logger
 
 logger = get_logger("admin")
@@ -38,10 +37,9 @@ async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return ConversationHandler.END
 
     await update.message.reply_text(
-        "📢 *Broadcast Message*\n\n"
-        "Pilih target audience:",
+        "📢 *Broadcast Message*\n\n" "Pilih target audience:",
         parse_mode="MarkdownV2",
-        reply_markup=Keyboards.broadcast_targets()
+        reply_markup=Keyboards.broadcast_targets(),
     )
     return SELECT_TARGET
 
@@ -59,18 +57,14 @@ async def select_target(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     target = query.data.split(":")[-1]
     context.user_data["broadcast_target"] = target
 
-    target_name = {
-        "all": "Semua User",
-        "buyers": "Buyers Only",
-        "active_7days": "Active 7 Days"
-    }.get(target, target)
+    target_name = {"all": "Semua User", "buyers": "Buyers Only", "active_7days": "Active 7 Days"}.get(target, target)
 
     await query.edit_message_text(
         f"📢 Target: *{escape_md(target_name)}*\n\n"
         "Masukkan pesan broadcast:\n"
         "\\(Bisa juga kirim foto/dokumen dengan caption\\)\n\n"
         "Ketik /cancel untuk membatalkan\\.",
-        parse_mode="MarkdownV2"
+        parse_mode="MarkdownV2",
     )
     return INPUT_MESSAGE
 
@@ -107,7 +101,7 @@ async def input_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         f"Media: {escape_md(media_type)}\n\n"
         f"*Message:*\n{escape_md(message_text[:500])}\n\n"
         "Ketik `CONFIRM` untuk mengirim atau /cancel untuk batal\\.",
-        parse_mode="MarkdownV2"
+        parse_mode="MarkdownV2",
     )
     return CONFIRM
 
@@ -129,10 +123,7 @@ async def confirm_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await update.message.reply_text("⏳ Mengirim broadcast...")
 
     sent, failed = await notification.broadcast_message(
-        message=message,
-        target=target,
-        media_type=media_type,
-        media_file_id=media_file_id
+        message=message, target=target, media_type=media_type, media_file_id=media_file_id
     )
 
     # Save to database
@@ -141,14 +132,11 @@ async def confirm_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         created_by=update.effective_user.id,
         media_type=media_type,
         media_file_id=media_file_id,
-        target_audience=target
+        target_audience=target,
     )
 
     await update.message.reply_text(
-        f"✅ *Broadcast Selesai\\!*\n\n"
-        f"📤 Terkirim: `{sent}`\n"
-        f"❌ Gagal: `{failed}`",
-        parse_mode="MarkdownV2"
+        f"✅ *Broadcast Selesai\\!*\n\n" f"📤 Terkirim: `{sent}`\n" f"❌ Gagal: `{failed}`", parse_mode="MarkdownV2"
     )
     logger.info(f"Broadcast sent: target={target}, sent={sent}, failed={failed}, by={update.effective_user.id}")
 
@@ -165,7 +153,10 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 # Conversation handler
 broadcast_conversation = ConversationHandler(
-    entry_points=[CommandHandler("broadcast", broadcast_start)],
+    entry_points=[
+        CommandHandler("broadcast", broadcast_start),
+        MessageHandler(filters.Regex("^📢 Broadcast$"), broadcast_start),
+    ],
     states={
         SELECT_TARGET: [CallbackQueryHandler(select_target, pattern=r"^admin:broadcast")],
         INPUT_MESSAGE: [
