@@ -7,7 +7,7 @@ from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
 
 from database.db import Database
 from services.stock_manager import StockManager
-from utils.formatters import format_stock_summary
+from utils.formatters import format_stock_summary, escape_md
 from utils.validators import validate_stock_entry
 from utils.logger import get_logger
 
@@ -53,7 +53,7 @@ async def addstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     # Check product exists
     product = await db.get_product(product_code)
     if not product:
-        await update.message.reply_text(f"❌ Produk `{product_code}` tidak ditemukan.")
+        await update.message.reply_text(f"❌ Produk `{escape_md(product_code)}` tidak ditemukan\.", parse_mode="MarkdownV2")
         return
 
     # Validate entry
@@ -76,12 +76,13 @@ async def addstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         stock_count = await db.get_available_stock_count(product_code)
 
         await update.message.reply_text(
-            f"✅ Stock ditambahkan!\n\n"
-            f"📦 Produk: {product['name']}\n"
-            f"📧 Email: `{data['email'][:10]}...`\n"
-            f"📊 Total Stock: {stock_count}",
+            f"✅ Stock ditambahkan\!\n\n"
+            f"📦 Produk: {escape_md(product['name'])}\n"
+            f"📧 Email: `{escape_md(data['email'][:10])}\.\.\.*`\n"
+            f"📊 Total Stock: `{stock_count}`",
             parse_mode="MarkdownV2"
         )
+        logger.info(f"Stock added: product={product_code}, email={data['email']}, by={update.effective_user.id}")
     except Exception as e:
         logger.error(f"Failed to add stock: {e}")
         await update.message.reply_text(f"❌ Gagal menambah stock: {e}")
@@ -115,7 +116,7 @@ async def handle_stock_file(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # Check product exists
     product = await db.get_product(product_code)
     if not product:
-        await update.message.reply_text(f"❌ Produk `{product_code}` tidak ditemukan.")
+        await update.message.reply_text(f"❌ Produk `{escape_md(product_code)}` tidak ditemukan\.", parse_mode="MarkdownV2")
         return
 
     # Download file
@@ -136,10 +137,11 @@ async def handle_stock_file(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     result_text = (
         f"📦 *Bulk Stock Upload Complete*\n\n"
-        f"📊 Produk: {product['name']}\n"
-        f"✅ Berhasil: {success}\n"
-        f"❌ Gagal: {errors}\n"
+        f"📊 Produk: {escape_md(product['name'])}\n"
+        f"✅ Berhasil: `{success}`\n"
+        f"❌ Gagal: `{errors}`\n"
     )
+    logger.info(f"Bulk stock upload: product={product_code}, success={success}, errors={errors}, by={update.effective_user.id}")
 
     if error_msgs and len(error_msgs) <= 5:
         result_text += "\n*Errors:*\n" + "\n".join(error_msgs[:5])
@@ -186,7 +188,7 @@ async def stockdetails_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(f"📦 Tidak ada stock tersedia untuk `{product_code}`")
         return
 
-    lines = [f"📦 *Stock Details: {product_code}*\n", f"Total: {len(stock_items)} items\n"]
+    lines = [f"📦 *Stock Details: {escape_md(product_code)}*\n", f"Total: `{len(stock_items)}` items\n"]
 
     for i, item in enumerate(stock_items[:20], 1):
         email = item["email"]

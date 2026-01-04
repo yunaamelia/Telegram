@@ -8,6 +8,7 @@ from telegram.ext import ContextTypes, CommandHandler
 
 from config import config
 from database.db import Database
+from utils.formatters import escape_md
 from utils.logger import get_logger
 
 logger = get_logger("admin")
@@ -67,10 +68,11 @@ async def addadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         role="admin",
         added_by=update.effective_user.id
     )
+    logger.info(f"Admin added: user_id={user_id}, by={update.effective_user.id}")
 
     await update.message.reply_text(
-        f"✅ User `{user_id}` (@{user.get('username', 'N/A')}) "
-        f"ditambahkan sebagai admin.",
+        f"✅ User `{user_id}` \(@{escape_md(user.get('username', 'N/A'))}\) "
+        f"ditambahkan sebagai admin\.",
         parse_mode="MarkdownV2"
     )
 
@@ -100,9 +102,10 @@ async def removeadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     success = await db.remove_admin(user_id)
     if success:
-        await update.message.reply_text(f"✅ Admin `{user_id}` dihapus.", parse_mode="MarkdownV2")
+        logger.info(f"Admin removed: user_id={user_id}, by={update.effective_user.id}")
+        await update.message.reply_text(f"✅ Admin `{user_id}` dihapus\.", parse_mode="MarkdownV2")
     else:
-        await update.message.reply_text("❌ Gagal menghapus admin atau tidak ditemukan.")
+        await update.message.reply_text("❌ Gagal menghapus admin atau tidak ditemukan\.")
 
 
 async def listadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -128,8 +131,8 @@ async def listadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         username = user_info.get("username", "N/A") if user_info else "N/A"
 
         lines.append(
-            f"{role_emoji} `{admin['user_id']}` @{username}\n"
-            f"   Role: {admin['role']}\n"
+            f"{role_emoji} `{admin['user_id']}` @{escape_md(username)}\n"
+            f"   Role: {escape_md(admin['role'])}\n"
         )
 
     await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")

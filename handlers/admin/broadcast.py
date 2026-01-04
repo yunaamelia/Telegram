@@ -15,6 +15,7 @@ from telegram.ext import (
 from database.db import Database
 from services.notification import NotificationService
 from utils.keyboards import Keyboards
+from utils.formatters import escape_md
 from utils.logger import get_logger
 
 logger = get_logger("admin")
@@ -65,10 +66,10 @@ async def select_target(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     }.get(target, target)
 
     await query.edit_message_text(
-        f"📢 Target: *{target_name}*\n\n"
+        f"📢 Target: *{escape_md(target_name)}*\n\n"
         "Masukkan pesan broadcast:\n"
-        "(Bisa juga kirim foto/dokumen dengan caption)\n\n"
-        "Ketik /cancel untuk membatalkan.",
+        "\(Bisa juga kirim foto/dokumen dengan caption\)\n\n"
+        "Ketik /cancel untuk membatalkan\.",
         parse_mode="MarkdownV2"
     )
     return INPUT_MESSAGE
@@ -102,10 +103,10 @@ async def input_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     await update.message.reply_text(
         f"📢 *Preview Broadcast*\n\n"
-        f"Target: {target} ({len(users)} users)\n"
-        f"Media: {media_type}\n\n"
-        f"*Message:*\n{message_text[:500]}\n\n"
-        "Ketik `CONFIRM` untuk mengirim atau /cancel untuk batal.",
+        f"Target: {escape_md(target)} \({len(users)} users\)\n"
+        f"Media: {escape_md(media_type)}\n\n"
+        f"*Message:*\n{escape_md(message_text[:500])}\n\n"
+        "Ketik `CONFIRM` untuk mengirim atau /cancel untuk batal\.",
         parse_mode="MarkdownV2"
     )
     return CONFIRM
@@ -144,11 +145,12 @@ async def confirm_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     )
 
     await update.message.reply_text(
-        f"✅ *Broadcast Selesai!*\n\n"
-        f"📤 Terkirim: {sent}\n"
-        f"❌ Gagal: {failed}",
+        f"✅ *Broadcast Selesai\!*\n\n"
+        f"📤 Terkirim: `{sent}`\n"
+        f"❌ Gagal: `{failed}`",
         parse_mode="MarkdownV2"
     )
+    logger.info(f"Broadcast sent: target={target}, sent={sent}, failed={failed}, by={update.effective_user.id}")
 
     context.user_data.clear()
     return ConversationHandler.END

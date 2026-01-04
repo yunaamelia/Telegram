@@ -7,7 +7,7 @@ from telegram.ext import ContextTypes, CommandHandler
 
 from database.db import Database
 from services.notification import NotificationService
-from utils.formatters import format_currency
+from utils.formatters import format_currency, escape_md
 from utils.logger import get_logger
 
 logger = get_logger("admin")
@@ -58,8 +58,8 @@ async def transactions_command(update: Update, context: ContextTypes.DEFAULT_TYP
         }.get(tx["status"], "❓")
 
         lines.append(
-            f"{status_emoji} `{tx['merchant_ref'][:20]}`\n"
-            f"   @{tx.get('username', 'N/A')} | {format_currency(tx['amount'])}\n"
+            f"{status_emoji} `{escape_md(tx['merchant_ref'][:20])}`\n"
+            f"   @{escape_md(tx.get('username', 'N/A'))} \| `{escape_md(format_currency(tx['amount']))}`\n"
         )
 
     await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
@@ -83,10 +83,10 @@ async def refunds_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     for tx in refunds:
         lines.append(
-            f"🆔 `{tx['transaction_id']}`\n"
-            f"   User: @{tx.get('username', 'N/A')} (ID: {tx['user_id']})\n"
-            f"   Product: {tx.get('product_name', tx['product_code'])}\n"
-            f"   Amount: {format_currency(tx['amount'])}\n"
+            f"🆔 `{escape_md(tx['transaction_id'])}`\n"
+            f"   User: @{escape_md(tx.get('username', 'N/A'))} \(ID: `{tx['user_id']}`\)\n"
+            f"   Product: {escape_md(tx.get('product_name', tx['product_code']))}\n"
+            f"   Amount: `{escape_md(format_currency(tx['amount']))}`\n"
         )
 
     lines.append("\n*Commands:*")
@@ -121,14 +121,15 @@ async def approverefund_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     # Update status
     await db.update_transaction_status(transaction_id, "REFUNDED")
+    logger.info(f"Refund approved: tx={transaction_id}, user={tx['user_id']}, by={update.effective_user.id}")
 
     # Notify user
     notification = NotificationService(context.bot, db)
     await notification.send_refund_notification(tx["user_id"], approved=True)
 
     await update.message.reply_text(
-        f"✅ Refund disetujui untuk transaksi `{transaction_id}`\n"
-        f"User {tx['user_id']} telah dinotifikasi.",
+        f"✅ Refund disetujui untuk transaksi `{escape_md(transaction_id)}`\n"
+        f"User `{tx['user_id']}` telah dinotifikasi\.",
         parse_mode="MarkdownV2"
     )
 
@@ -163,15 +164,16 @@ async def rejectrefund_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # Update back to PAID (refund rejected)
     await db.update_transaction_status(transaction_id, "PAID")
+    logger.info(f"Refund rejected: tx={transaction_id}, reason={reason}, by={update.effective_user.id}")
 
     # Notify user
     notification = NotificationService(context.bot, db)
     await notification.send_refund_notification(tx["user_id"], approved=False, reason=reason)
 
     await update.message.reply_text(
-        f"❌ Refund ditolak untuk transaksi `{transaction_id}`\n"
-        f"Reason: {reason}\n"
-        f"User {tx['user_id']} telah dinotifikasi.",
+        f"❌ Refund ditolak untuk transaksi `{escape_md(transaction_id)}`\n"
+        f"Reason: {escape_md(reason)}\n"
+        f"User `{tx['user_id']}` telah dinotifikasi\.",
         parse_mode="MarkdownV2"
     )
 

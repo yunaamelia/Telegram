@@ -13,7 +13,7 @@ from telegram.ext import (
 
 from database.db import Database
 from utils.validators import validate_product_code, validate_product_name, validate_price
-from utils.formatters import format_currency
+from utils.formatters import format_currency, escape_md
 from utils.logger import get_logger
 
 logger = get_logger("admin")
@@ -151,12 +151,13 @@ async def confirm_product(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
 
     await update.message.reply_text(
-        f"✅ *Produk Berhasil Ditambahkan!*\n\n"
-        f"📦 Code: `{product_data['product_code']}`\n"
-        f"🏷️ Name: {product_data['name']}\n"
-        f"💰 Price: {format_currency(product_data['price'])}",
+        f"✅ *Produk Berhasil Ditambahkan\!*\n\n"
+        f"📦 Code: `{escape_md(product_data['product_code'])}`\n"
+        f"🏷️ Name: {escape_md(product_data['name'])}\n"
+        f"💰 Price: `{escape_md(format_currency(product_data['price']))}`",
         parse_mode="MarkdownV2"
     )
+    logger.info(f"Product added: code={product_data['product_code']}, name={product_data['name']}, by={update.effective_user.id}")
 
     context.user_data.clear()
     return ConversationHandler.END
@@ -218,10 +219,11 @@ async def editproduct_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     await db.update_product(product_code, **update_data)
+    logger.info(f"Product updated: code={product_code}, field={field}, value={value}, by={update.effective_user.id}")
 
     await update.message.reply_text(
-        f"✅ Produk `{product_code}` berhasil diupdate!\n"
-        f"Field: {field} = {value}",
+        f"✅ Produk `{escape_md(product_code)}` berhasil diupdate\!\n"
+        f"Field: {escape_md(field)} \= {escape_md(value)}",
         parse_mode="MarkdownV2"
     )
 
@@ -246,9 +248,10 @@ async def deleteproduct_command(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     await db.delete_product(product_code)
+    logger.info(f"Product deactivated: code={product_code}, by={update.effective_user.id}")
 
     await update.message.reply_text(
-        f"✅ Produk `{product_code}` telah dinonaktifkan.",
+        f"✅ Produk `{escape_md(product_code)}` telah dinonaktifkan\.",
         parse_mode="MarkdownV2"
     )
 
@@ -270,9 +273,12 @@ async def listproducts_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
     for p in products:
         status = "🟢" if p["is_active"] else "🔴"
+        name = escape_md(p['name'])
+        code = escape_md(p['product_code'])
+        price = escape_md(format_currency(p['price']))
         lines.append(
-            f"{status} *{p['name']}*\n"
-            f"   `{p['product_code']}` | {format_currency(p['price'])}\n"
+            f"{status} *{name}*\n"
+            f"   `{code}` \| `{price}`\n"
         )
 
     await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")

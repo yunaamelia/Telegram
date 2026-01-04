@@ -6,6 +6,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
 
 from database.db import Database
+from utils.formatters import escape_md
 from utils.logger import get_logger
 
 logger = get_logger("admin")
@@ -57,6 +58,7 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     # Ban user
     await db.ban_user(user_id, reason)
+    logger.info(f"User banned: user_id={user_id}, reason={reason}, by={update.effective_user.id}")
 
     # Log security event
     await db.log_security_event(
@@ -66,8 +68,8 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     )
 
     await update.message.reply_text(
-        f"🚫 User `{user_id}` (@{user.get('username', 'N/A')}) diblokir.\n"
-        f"Alasan: {reason}",
+        f"🚫 User `{user_id}` \(@{escape_md(user.get('username', 'N/A'))}\) diblokir\.\n"
+        f"Alasan: {escape_md(reason)}",
         parse_mode="MarkdownV2"
     )
 
@@ -98,6 +100,7 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     await db.unban_user(user_id)
+    logger.info(f"User unbanned: user_id={user_id}, by={update.effective_user.id}")
 
     # Log security event
     await db.log_security_event(
@@ -106,7 +109,7 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         details=f"Unbanned by {update.effective_user.id}"
     )
 
-    await update.message.reply_text(f"✅ User `{user_id}` berhasil di-unban.", parse_mode="MarkdownV2")
+    await update.message.reply_text(f"✅ User `{user_id}` berhasil di\-unban\.", parse_mode="MarkdownV2")
 
 
 async def banlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -127,8 +130,8 @@ async def banlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     for user in banned_users:
         lines.append(
-            f"• `{user['user_id']}` @{user.get('username', 'N/A')}\n"
-            f"  Reason: {user.get('ban_reason', 'N/A')}\n"
+            f"• `{user['user_id']}` @{escape_md(user.get('username', 'N/A'))}\n"
+            f"  Reason: {escape_md(user.get('ban_reason', 'N/A'))}\n"
         )
 
     await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
@@ -155,8 +158,8 @@ async def security_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if logs:
         for log in logs[:10]:
             lines.append(
-                f"• {log['action']} - User {log.get('user_id', 'N/A')}\n"
-                f"  {log.get('details', '')[:50]}\n"
+                f"• {escape_md(log['action'])} \- User `{log.get('user_id', 'N/A')}`\n"
+                f"  {escape_md(log.get('details', '')[:50])}\n"
             )
     else:
         lines.append("_No recent events_")
@@ -198,19 +201,19 @@ async def userstats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     text = (
         f"👤 *User Statistics*\n\n"
         f"🆔 ID: `{user_id}`\n"
-        f"👤 Username: @{user.get('username', 'N/A')}\n"
-        f"📛 Name: {user.get('first_name', '')} {user.get('last_name', '')}\n"
-        f"📅 Joined: {user.get('join_date', 'N/A')}\n"
+        f"👤 Username: @{escape_md(user.get('username', 'N/A'))}\n"
+        f"📛 Name: {escape_md(user.get('first_name', ''))} {escape_md(user.get('last_name', ''))}\n"
+        f"📅 Joined: {escape_md(str(user.get('join_date', 'N/A')))}\n"
         f"🚫 Banned: {'Yes' if is_banned else 'No'}\n"
     )
 
     if is_banned:
-        text += f"📝 Ban Reason: {ban_reason}\n"
+        text += f"📝 Ban Reason: {escape_md(ban_reason)}\n"
 
     text += (
         f"\n📊 *Transaction Stats:*\n"
-        f"✅ Total Paid: {paid_count}\n"
-        f"💰 Total Spent: Rp {total_spent:,}\n"
+        f"✅ Total Paid: `{paid_count}`\n"
+        f"💰 Total Spent: `Rp {total_spent:,}`\n"
     )
 
     await update.message.reply_text(text, parse_mode="MarkdownV2")

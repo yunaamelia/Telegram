@@ -10,7 +10,7 @@ from telegram.ext import ContextTypes, CommandHandler
 
 from config import config
 from database.db import Database
-from utils.formatters import format_stats
+from utils.formatters import format_stats, escape_md
 from utils.logger import get_logger
 
 logger = get_logger("admin")
@@ -99,18 +99,19 @@ async def backupdb_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     try:
         shutil.copy2(db_path, backup_path)
+        logger.info(f"Database backup created: {backup_path}, by={update.effective_user.id}")
 
         # Send to admin
         with open(backup_path, "rb") as f:
             await update.message.reply_document(
                 document=f,
                 filename=f"backup_{timestamp}.db",
-                caption=f"📦 Database backup created: {timestamp}"
+                caption=f"📦 Database backup created: {escape_md(timestamp)}"
             )
 
     except Exception as e:
         logger.error(f"Backup failed: {e}")
-        await update.message.reply_text(f"❌ Backup failed: {e}")
+        await update.message.reply_text(f"❌ Backup failed: {escape_md(str(e))}", parse_mode="MarkdownV2")
 
 
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -152,7 +153,8 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await seed_database(db)
 
     context.user_data.clear()
-    await update.message.reply_text("🔄 Database reset complete!")
+    logger.warning(f"Database reset by super admin: {update.effective_user.id}")
+    await update.message.reply_text("🔄 Database reset complete\!", parse_mode="MarkdownV2")
 
 
 async def reset_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -192,8 +194,9 @@ async def testpayment_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
     if success and result:
+        logger.info(f"Test payment simulated: tx={transaction_id}, by={update.effective_user.id}")
         await update.message.reply_text(
-            f"✅ Payment simulated for `{transaction_id}`\n"
+            f"✅ Payment simulated for `{escape_md(transaction_id)}`\n"
             f"Status: PAID",
             parse_mode="MarkdownV2"
         )
