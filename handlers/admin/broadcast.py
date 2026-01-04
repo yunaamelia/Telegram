@@ -68,8 +68,8 @@ async def select_target(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await query.edit_message_text(
         f"📢 Target: *{escape_md(target_name)}*\n\n"
         "Masukkan pesan broadcast:\n"
-        "\(Bisa juga kirim foto/dokumen dengan caption\)\n\n"
-        "Ketik /cancel untuk membatalkan\.",
+        "\\(Bisa juga kirim foto/dokumen dengan caption\\)\n\n"
+        "Ketik /cancel untuk membatalkan\\.",
         parse_mode="MarkdownV2"
     )
     return INPUT_MESSAGE
@@ -103,10 +103,10 @@ async def input_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     await update.message.reply_text(
         f"📢 *Preview Broadcast*\n\n"
-        f"Target: {escape_md(target)} \({len(users)} users\)\n"
+        f"Target: {escape_md(target)} \\({len(users)} users\\)\n"
         f"Media: {escape_md(media_type)}\n\n"
         f"*Message:*\n{escape_md(message_text[:500])}\n\n"
-        "Ketik `CONFIRM` untuk mengirim atau /cancel untuk batal\.",
+        "Ketik `CONFIRM` untuk mengirim atau /cancel untuk batal\\.",
         parse_mode="MarkdownV2"
     )
     return CONFIRM
@@ -145,7 +145,7 @@ async def confirm_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     )
 
     await update.message.reply_text(
-        f"✅ *Broadcast Selesai\!*\n\n"
+        f"✅ *Broadcast Selesai\\!*\n\n"
         f"📤 Terkirim: `{sent}`\n"
         f"❌ Gagal: `{failed}`",
         parse_mode="MarkdownV2"
