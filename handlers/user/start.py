@@ -11,7 +11,6 @@ from database.db import Database
 from utils.keyboards import Keyboards
 from utils.reply_keyboards import UserReplyKeyboard
 from utils.admin_keyboards import AdminKeyboards
-from utils.formatters import format_welcome
 from utils.messages import safe_edit_or_send
 from utils.logger import get_logger
 from utils.rate_limiter import rate_limiter
@@ -113,15 +112,15 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if is_admin:
         # New: Use AdminKeyboards for single-page admin menu
         reply_kb = AdminKeyboards.admin_reply_keyboard()
-        role_text = "👑 *Admin Mode*\n\n"
+        role_text = "👑 𝐀𝐝𝐦𝐢𝐧 𝐌𝐨𝐝𝐞\n\n"
         # No more page tracking needed for admin reply keyboard
         context.user_data.pop("admin_kb_page", None)
     else:
         reply_kb = UserReplyKeyboard.build()
         role_text = ""
 
-    # Send welcome message
-    welcome_text = format_welcome(config.store.name, user.first_name)
+    # Send welcome message using new UI/UX templates
+    welcome_text = msg.welcome(user.first_name, config.store.name)
 
     # Try to send logo if exists
     logo_path = config.store.logo_path
@@ -131,7 +130,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 await update.message.reply_photo(
                     photo=photo,
                     caption=f"{role_text}{welcome_text}",
-                    parse_mode="MarkdownV2",
                     reply_markup=Keyboards.main_menu()  # Inline keyboard
                 )
         except Exception as e:
@@ -139,14 +137,12 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             # Fallback to text with inline keyboard
             await update.message.reply_text(
                 text=f"{role_text}{welcome_text}",
-                parse_mode="MarkdownV2",
                 reply_markup=Keyboards.main_menu()  # Inline keyboard
             )
     else:
         # Text only with inline keyboard
         await update.message.reply_text(
             text=f"{role_text}{welcome_text}",
-            parse_mode="MarkdownV2",
             reply_markup=Keyboards.main_menu()  # Inline keyboard
         )
 
@@ -163,12 +159,11 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
 
     user = update.effective_user
-    welcome_text = format_welcome(config.store.name, user.first_name)
+    welcome_text = msg.welcome(user.first_name, config.store.name)
 
     await safe_edit_or_send(
         query, context, user.id,
         text=welcome_text,
-        parse_mode="MarkdownV2",
         reply_markup=Keyboards.main_menu()
     )
 

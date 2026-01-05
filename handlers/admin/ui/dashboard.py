@@ -7,7 +7,9 @@ from database.db import Database
 from telegram import Update
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 from utils.admin_keyboards import AdminKeyboards
+from utils.loading_states import loading
 from utils.logger import get_logger
+from utils.message_templates import MessageTemplates as msg
 
 logger = get_logger("admin.ui")
 
@@ -31,35 +33,31 @@ async def show_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE, exp
     user = update.effective_user
     db: Database = context.bot_data["db"]
 
+    # Show typing indicator for command
+    if not query:
+        await loading.typing_indicator(update, context)
+
     # Check admin permission
     if not await db.is_admin(user.id):
-        text = "⛔ Access denied\\. Admin only\\."
+        error_text = msg.error("Access denied", "Admin only")
         if query:
-            await query.edit_message_text(text, parse_mode="MarkdownV2")
+            await query.edit_message_text(error_text)
         else:
-            await update.message.reply_text(text, parse_mode="MarkdownV2")
+            await update.message.reply_text(error_text)
         return
 
     # Get quick stats
     stats = await get_quick_stats(db)
 
-    text = (
-        "*🔐 Admin Dashboard*\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"*📊 Quick Stats:*\n"
-        f"👥 Users: `{stats.get('total_users', 0)}`\n"
-        f"💰 Transactions: `{stats.get('total_transactions', 0)}`\n"
-        f"📦 Products: `{stats.get('total_products', 0)}`\n"
-        f"⚠️ Low Stock: `{stats.get('low_stock_count', 0)}`\n\n"
-        "_Select category below:_"
-    )
+    # Use new UI/UX template
+    text = msg.admin_dashboard(stats)
 
     keyboard = AdminKeyboards.main_dashboard(expanded=expanded)
 
     if query:
-        await query.edit_message_text(text, parse_mode="MarkdownV2", reply_markup=keyboard)
+        await query.edit_message_text(text, reply_markup=keyboard)
     else:
-        await update.message.reply_text(text, parse_mode="MarkdownV2", reply_markup=keyboard)
+        await update.message.reply_text(text, reply_markup=keyboard)
 
 
 async def show_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
