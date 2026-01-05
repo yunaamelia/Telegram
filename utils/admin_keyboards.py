@@ -10,62 +10,132 @@ import math
 
 class AdminKeyboards:
     """Admin keyboard builders with hierarchical navigation."""
-    
+
     # Emoji constants for consistency
     NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-    
+
     # ==================== Main Dashboard ====================
-    
+
     @staticmethod
-    def main_dashboard() -> InlineKeyboardMarkup:
+    def main_dashboard(expanded: bool = False) -> InlineKeyboardMarkup:
         """
         Main admin dashboard - hierarchical navigation.
-        
-        Layout:
-        ⭐ Quick Actions (expandable)
-        📂 Full Menu (collapsible categories)
+
+        Args:
+            expanded: If True, show all quick actions. If False, show collapsed view.
         """
-        keyboard = [
-            # Quick Actions Section Header
-            [InlineKeyboardButton("⭐ Quick Actions ▼", callback_data="admin:quick:toggle")],
-            
-            # Quick action buttons (initially visible)
-            [
-                InlineKeyboardButton("📦 +Stock", callback_data="admin:quick:addstock"),
+        keyboard = []
+
+        if expanded:
+            # Expanded view - show all quick actions
+            keyboard.append([
+                InlineKeyboardButton("⭐ Quick Actions ▲", callback_data="admin:quick:collapse")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("📦 Add Stock", callback_data="admin:quick:addstock"),
                 InlineKeyboardButton("📊 Stats", callback_data="admin:quick:stats"),
                 InlineKeyboardButton("💰 Trans", callback_data="admin:quick:trans")
-            ],
-            [
+            ])
+            keyboard.append([
                 InlineKeyboardButton("🔧 Logs", callback_data="admin:quick:logs"),
                 InlineKeyboardButton("💾 Backup", callback_data="admin:quick:backup"),
                 InlineKeyboardButton("📢 BC", callback_data="admin:quick:broadcast")
-            ],
-            
-            # Divider
-            [InlineKeyboardButton("━━━━━━━━━━━━━━━", callback_data="noop")],
-            
-            # Full Menu Header
-            [InlineKeyboardButton("📂 Full Menu", callback_data="noop")],
-            
-            # Category buttons (collapsible)
-            [InlineKeyboardButton("📦 Stock Management ▶️", callback_data="admin:menu:stock")],
-            [InlineKeyboardButton("🛍️ Product Management ▶️", callback_data="admin:menu:products")],
-            [InlineKeyboardButton("💰 Transactions ▶️", callback_data="admin:menu:transactions")],
-            [InlineKeyboardButton("👥 User Management ▶️", callback_data="admin:menu:users")],
-            [InlineKeyboardButton("📊 Reports & Analytics ▶️", callback_data="admin:menu:reports")],
-            [InlineKeyboardButton("⚙️ System & Settings ▶️", callback_data="admin:menu:system")],
-            
-            # Bottom navigation
+            ])
+            keyboard.append([
+                InlineKeyboardButton("➕ Add Product", callback_data="admin:product:add"),
+                InlineKeyboardButton("📋 Products", callback_data="admin:menu:products"),
+                InlineKeyboardButton("👥 Users", callback_data="admin:menu:users")
+            ])
+        else:
+            # Collapsed view - minimal quick actions
+            keyboard.append([
+                InlineKeyboardButton("⭐ Quick Actions ▼", callback_data="admin:quick:expand")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("📦 +Stock", callback_data="admin:quick:addstock"),
+                InlineKeyboardButton("📊 Stats", callback_data="admin:quick:stats"),
+                InlineKeyboardButton("💰 Trans", callback_data="admin:quick:trans")
+            ])
+
+        # Divider
+        keyboard.append([InlineKeyboardButton("───────────────", callback_data="noop")])
+
+        # Full Menu Header - Clickable
+        keyboard.append([
+            InlineKeyboardButton("📂 Full Menu ▶", callback_data="admin:fullmenu:toggle")
+        ])
+
+        # Category buttons
+        keyboard.append([InlineKeyboardButton("📦 Stock Management", callback_data="admin:menu:stock")])
+        keyboard.append([InlineKeyboardButton("🛍️ Product Management", callback_data="admin:menu:products")])
+        keyboard.append([InlineKeyboardButton("💰 Transactions", callback_data="admin:menu:transactions")])
+        keyboard.append([InlineKeyboardButton("👥 User Management", callback_data="admin:menu:users")])
+        keyboard.append([InlineKeyboardButton("📊 Reports & Analytics", callback_data="admin:menu:reports")])
+        keyboard.append([InlineKeyboardButton("⚙️ System & Settings", callback_data="admin:menu:system")])
+
+        # Bottom navigation
+        keyboard.append([
+            InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
+            InlineKeyboardButton("❓ Help", callback_data="admin:help"),
+            InlineKeyboardButton("🔄 Refresh", callback_data="admin:dashboard")
+        ])
+
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def main_dashboard_full() -> InlineKeyboardMarkup:
+        """Full menu view - all categories expanded inline."""
+        keyboard = [
+            # Header
+            [InlineKeyboardButton("📂 Full Menu ✓", callback_data="admin:dashboard")],
+
+            # Stock
+            [InlineKeyboardButton("─── 📦 Stock ───", callback_data="noop")],
             [
-                InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
-                InlineKeyboardButton("❓ Help", callback_data="admin:help"),
-                InlineKeyboardButton("🔄 Refresh", callback_data="admin:dashboard")
-            ]
+                InlineKeyboardButton("➕ Add", callback_data="admin:stock:add"),
+                InlineKeyboardButton("📋 Check", callback_data="admin:stock:check"),
+                InlineKeyboardButton("⚠️ Low", callback_data="admin:stock:lowstock")
+            ],
+
+            # Products
+            [InlineKeyboardButton("─── 🛍️ Products ───", callback_data="noop")],
+            [
+                InlineKeyboardButton("➕ Add", callback_data="admin:product:add"),
+                InlineKeyboardButton("📃 List", callback_data="admin:product:list"),
+                InlineKeyboardButton("✏️ Edit", callback_data="admin:product:edit")
+            ],
+
+            # Transactions
+            [InlineKeyboardButton("─── 💰 Trans ───", callback_data="noop")],
+            [
+                InlineKeyboardButton("📋 All", callback_data="admin:trans:all"),
+                InlineKeyboardButton("⏳ Unpaid", callback_data="admin:trans:unpaid"),
+                InlineKeyboardButton("✅ Paid", callback_data="admin:trans:paid")
+            ],
+
+            # Users
+            [InlineKeyboardButton("─── 👥 Users ───", callback_data="noop")],
+            [
+                InlineKeyboardButton("👥 All", callback_data="admin:user:all"),
+                InlineKeyboardButton("🚫 Banned", callback_data="admin:user:banned"),
+                InlineKeyboardButton("🔍 Search", callback_data="admin:user:search")
+            ],
+
+            # System
+            [InlineKeyboardButton("─── ⚙️ System ───", callback_data="noop")],
+            [
+                InlineKeyboardButton("📊 Stats", callback_data="admin:system:stats"),
+                InlineKeyboardButton("💾 Backup", callback_data="admin:system:backup"),
+                InlineKeyboardButton("📢 BC", callback_data="admin:system:broadcast")
+            ],
+
+            # Back
+            [InlineKeyboardButton("🔙 Back to Dashboard", callback_data="admin:dashboard")]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     # ==================== Category Menus ====================
-    
+
     @staticmethod
     def stock_management_menu() -> InlineKeyboardMarkup:
         """Stock management submenu - 3 columns."""
@@ -87,7 +157,7 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def product_management_menu() -> InlineKeyboardMarkup:
         """Product management submenu - 3 columns."""
@@ -109,7 +179,7 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def transaction_management_menu() -> InlineKeyboardMarkup:
         """Transaction management submenu - 3 columns."""
@@ -131,7 +201,7 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def user_management_menu() -> InlineKeyboardMarkup:
         """User management submenu - 3 columns."""
@@ -153,7 +223,7 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def system_menu() -> InlineKeyboardMarkup:
         """System & settings submenu - 3 columns."""
@@ -175,7 +245,7 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def reports_menu() -> InlineKeyboardMarkup:
         """Reports & Analytics submenu - 3 columns."""
@@ -197,9 +267,9 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     # ==================== List Display Keyboards ====================
-    
+
     @staticmethod
     def product_list(
         products: List[Dict],
@@ -209,7 +279,7 @@ class AdminKeyboards:
     ) -> InlineKeyboardMarkup:
         """
         Product list with numbered buttons (3 columns).
-        
+
         Args:
             products: List of product dicts
             page: Current page number
@@ -218,13 +288,13 @@ class AdminKeyboards:
         """
         total_pages = max(1, math.ceil(len(products) / items_per_page))
         page = max(1, min(page, total_pages))
-        
+
         start_idx = (page - 1) * items_per_page
         end_idx = start_idx + items_per_page
         page_products = products[start_idx:end_idx]
-        
+
         keyboard = []
-        
+
         # Number buttons - 3 per row
         for i in range(0, len(page_products), 3):
             row = []
@@ -240,28 +310,28 @@ class AdminKeyboards:
                     )
             if row:
                 keyboard.append(row)
-        
+
         # Navigation row (always 3 buttons)
         nav_row = []
         if page > 1:
             nav_row.append(InlineKeyboardButton("◀️ Prev", callback_data=f"admin:product:list:{page-1}:{context}"))
         else:
             nav_row.append(InlineKeyboardButton(" ", callback_data="noop"))
-        
+
         if context == "view":
             nav_row.append(InlineKeyboardButton("🏠 Menu", callback_data="admin:menu:products"))
         else:
             nav_row.append(InlineKeyboardButton("❌ Cancel", callback_data="admin:menu:products"))
-        
+
         if page < total_pages:
             nav_row.append(InlineKeyboardButton("Next ▶️", callback_data=f"admin:product:list:{page+1}:{context}"))
         else:
             nav_row.append(InlineKeyboardButton(" ", callback_data="noop"))
-        
+
         keyboard.append(nav_row)
-        
+
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def stock_list(
         stock_items: List[Dict],
@@ -272,13 +342,13 @@ class AdminKeyboards:
         """Stock list with numbered buttons (3 columns)."""
         total_pages = max(1, math.ceil(len(stock_items) / items_per_page))
         page = max(1, min(page, total_pages))
-        
+
         start_idx = (page - 1) * items_per_page
         end_idx = start_idx + items_per_page
         page_items = stock_items[start_idx:end_idx]
-        
+
         keyboard = []
-        
+
         # Number buttons - 3 per row
         for i in range(0, len(page_items), 3):
             row = []
@@ -294,27 +364,27 @@ class AdminKeyboards:
                     )
             if row:
                 keyboard.append(row)
-        
+
         # Navigation row
         nav_row = []
         if page > 1:
             nav_row.append(InlineKeyboardButton("◀️ Prev", callback_data=f"admin:stock:list:{product_code}:{page-1}"))
         else:
             nav_row.append(InlineKeyboardButton(" ", callback_data="noop"))
-        
+
         nav_row.append(InlineKeyboardButton("🔙 Back", callback_data=f"admin:product:view:{product_code}:1"))
-        
+
         if page < total_pages:
             nav_row.append(InlineKeyboardButton("Next ▶️", callback_data=f"admin:stock:list:{product_code}:{page+1}"))
         else:
             nav_row.append(InlineKeyboardButton(" ", callback_data="noop"))
-        
+
         keyboard.append(nav_row)
-        
+
         return InlineKeyboardMarkup(keyboard)
-    
+
     # ==================== Detail View Keyboards ====================
-    
+
     @staticmethod
     def product_detail(product_code: str, has_stock: bool = True) -> InlineKeyboardMarkup:
         """Product detail actions - 3 columns."""
@@ -336,7 +406,7 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def stock_detail(stock_id: int, product_code: str) -> InlineKeyboardMarkup:
         """Stock item detail actions - 3 columns."""
@@ -353,9 +423,9 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     # ==================== Confirmation Keyboards ====================
-    
+
     @staticmethod
     def confirmation(
         action: str,
@@ -370,7 +440,7 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def confirmation_two_step(
         action: str,
@@ -392,7 +462,7 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def bulk_preview(
         action: str,
@@ -409,9 +479,9 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     # ==================== Wizard Keyboards ====================
-    
+
     @staticmethod
     def wizard_confirm_cancel() -> InlineKeyboardMarkup:
         """Simple confirm/cancel for wizards."""
@@ -422,7 +492,7 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def wizard_navigation(
         back_callback: str = None,
@@ -431,25 +501,25 @@ class AdminKeyboards:
     ) -> InlineKeyboardMarkup:
         """Wizard navigation with back/next/cancel."""
         row = []
-        
+
         if back_callback:
             row.append(InlineKeyboardButton("◀️ Back", callback_data=back_callback))
-        
+
         if cancel:
             row.append(InlineKeyboardButton("❌ Cancel", callback_data="admin:wizard:cancel"))
-        
+
         if next_callback:
             row.append(InlineKeyboardButton("Next ▶️", callback_data=next_callback))
-        
+
         return InlineKeyboardMarkup([row])
-    
+
     # ==================== Reply Keyboard (Quick Actions) ====================
-    
+
     @staticmethod
     def admin_reply_keyboard() -> ReplyKeyboardMarkup:
         """
         Admin reply keyboard - always visible quick actions.
-        
+
         Layout (2x3):
         [📦 +Stock] [📊 Stats] [🔧 Logs]
         [💰 Trans]  [📢 BC]    [🏠 Menu]
@@ -472,9 +542,26 @@ class AdminKeyboards:
             one_time_keyboard=False,
             input_field_placeholder="Admin Quick Actions"
         )
-    
+
+    @staticmethod
+    def broadcast_targets() -> InlineKeyboardMarkup:
+        """Broadcast target selection - 3 columns."""
+        keyboard = [
+            [
+                InlineKeyboardButton("👥 Semua", callback_data="admin:broadcast:all"),
+                InlineKeyboardButton("🛒 Buyers", callback_data="admin:broadcast:buyers"),
+                InlineKeyboardButton("📅 Active", callback_data="admin:broadcast:active_7days")
+            ],
+            [
+                InlineKeyboardButton("❌ Cancel", callback_data="admin:dashboard"),
+                InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
+                InlineKeyboardButton("❓ Help", callback_data="admin:help")
+            ]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
     # ==================== After Action Keyboards ====================
-    
+
     @staticmethod
     def after_stock_added(product_code: str) -> InlineKeyboardMarkup:
         """Options after successfully adding stock."""
@@ -486,7 +573,7 @@ class AdminKeyboards:
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     @staticmethod
     def after_product_added(product_code: str) -> InlineKeyboardMarkup:
         """Options after successfully adding product."""

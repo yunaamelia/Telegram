@@ -5,7 +5,7 @@ Reply keyboard message handler for FRIENDS Store Telegram Bot.
 from telegram import Update
 from telegram.ext import ContextTypes, MessageHandler, filters
 
-from utils.reply_keyboards import UserReplyKeyboard, AdminReplyKeyboard
+from utils.reply_keyboards import UserReplyKeyboard
 from utils.messages import safe_edit_or_send
 from database.db import Database
 from utils.logger import get_logger
@@ -24,29 +24,6 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
 
     # Check if admin for admin keyboard handling
     is_admin = await db.is_admin(user.id)
-
-    # Handle navigation buttons
-    if text == "◀️ Prev":
-        if is_admin:
-            current_page = context.user_data.get("admin_kb_page", 1)
-            new_page = max(1, current_page - 1)
-            context.user_data["admin_kb_page"] = new_page
-            await update.message.reply_text(
-                f"📋 Admin Menu (Page {new_page}/{AdminReplyKeyboard.get_total_pages()})",
-                reply_markup=AdminReplyKeyboard.build(new_page)
-            )
-        return
-
-    if text == "Next ▶️":
-        if is_admin:
-            current_page = context.user_data.get("admin_kb_page", 1)
-            new_page = min(AdminReplyKeyboard.get_total_pages(), current_page + 1)
-            context.user_data["admin_kb_page"] = new_page
-            await update.message.reply_text(
-                f"📋 Admin Menu (Page {new_page}/{AdminReplyKeyboard.get_total_pages()})",
-                reply_markup=AdminReplyKeyboard.build(new_page)
-            )
-        return
 
     if text == "🏠 Menu":
         from handlers.user.start import start_command
@@ -72,7 +49,7 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
         elif action == "check_payment":
             await update.message.reply_text(
                 "💳 Untuk cek status pembayaran, gunakan:\n"
-                "`/cekbayar <order_id>`",
+                "`/cekbayar order_id`",
                 parse_mode="MarkdownV2"
             )
 
@@ -87,80 +64,87 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
 
         return
 
-    # Admin keyboard handlers
-    if is_admin and text in AdminReplyKeyboard.HANDLERS:
-        action = AdminReplyKeyboard.HANDLERS[text]
-
-        # New UI Handlers
-        if action == "dashboard":
-            from handlers.admin.ui.dashboard import show_dashboard
-            await show_dashboard(update, context)
-            return
-
-        # Direct Menu Mappings using AdminKeyboards
-        from utils.admin_keyboards import AdminKeyboards
-
-        if action == "system":
-            await update.message.reply_text(
-                "*⚙️ System & Settings*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_",
-                parse_mode="MarkdownV2",
-                reply_markup=AdminKeyboards.system_menu()
-            )
-            return
-
-        if action == "transactions":
-            await update.message.reply_text(
-                "*💰 Transactions*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_",
-                parse_mode="MarkdownV2",
-                reply_markup=AdminKeyboards.transaction_management_menu()
-            )
-            return
-
-        if action == "checkstock":
-            await update.message.reply_text(
-                "*📦 Stock Management*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_",
-                parse_mode="MarkdownV2",
-                reply_markup=AdminKeyboards.stock_management_menu()
-            )
-            return
-
-        if action == "users":
-            await update.message.reply_text(
-                "*👥 User Management*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_",
-                parse_mode="MarkdownV2",
-                reply_markup=AdminKeyboards.user_management_menu()
-            )
-            return
-
-        # Legacy/Other Commands fallback
-        admin_commands = {
-            "stats": "/stats",
-            "security": "/security",
-            "addadmin": "/addadmin",
-            "backup": "/backup",
-            "deleteproduct": "/deleteproduct",
-            "listproducts": "/listproducts",
-            "search": "/search",
-            "reports": "/reports",
-            "config": "/config",
-            "api": "/api"
+    # Admin keyboard handlers (AdminKeyboards.admin_reply_keyboard)
+    if is_admin:
+        # Mapping for Admin Quick Actions
+        admin_actions = {
+            "📦 +Stock": "addstock",
+            "📊 Stats": "stats",
+            "🔧 Logs": "logs",
+            "💰 Trans": "transactions",
+            "📢 BC": "broadcast",
+            "🏠 Menu": "start" # Handled above, but kept for completeness in mapping thought
         }
 
-        if action in admin_commands:
-            await update.message.reply_text(
-                f"Gunakan perintah: `{admin_commands[action]}`",
-                parse_mode="MarkdownV2"
-            )
+        if text in admin_actions:
+            action = admin_actions[text]
+
+            # Direct Menu Mappings using AdminKeyboards
+            from utils.admin_keyboards import AdminKeyboards
+
+            if action == "addstock":
+                 # Trigger Add Stock Wizard
+                 from handlers.admin.wizards.stock_wizard import StockWizard
+                 await StockWizard.start(update, context)
+                 return
+
+            if action == "stats":
+                # Show stats using system menu logic or direct message
+                from handlers.admin.ui.system_ui import show_statistics
+                # show_statistics expects query, so we mimic message behavior
+                # or just direct to system menu
+                await update.message.reply_text(
+                     "*📊 Statistics*\n━━━━━━━━━━━━━━━━━━━━\n\n_Use inline menu for details:_",
+                     parse_mode="MarkdownV2",
+                     reply_markup=AdminKeyboards.system_menu()
+                )
+                return
+
+            if action == "logs":
+                 await update.message.reply_text(
+                    "*🔧 System Logs*\n━━━━━━━━━━━━━━━━━━━━\n\n"
+                    "_Use `/logs` command to view logs\\._\n"
+                    "_Use `/logs error` for error logs\\._",
+                    parse_mode="MarkdownV2",
+                    reply_markup=AdminKeyboards.system_menu()
+                 )
+                 return
+
+            if action == "transactions":
+                await update.message.reply_text(
+                    "*💰 Transactions*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_",
+                    parse_mode="MarkdownV2",
+                    reply_markup=AdminKeyboards.transaction_management_menu()
+                )
+                return
+
+            if action == "broadcast":
+                 await update.message.reply_text(
+                    "*📢 Broadcast Message*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select target:_",
+                    parse_mode="MarkdownV2",
+                    reply_markup=AdminKeyboards.broadcast_targets()
+                 )
+                 return
+
+            return
 
 
 # Handler for filtering reply keyboard messages
 def get_reply_keyboard_filter():
     """Create filter for reply keyboard buttons."""
-    all_buttons = (
-        [btn for row in UserReplyKeyboard.BUTTONS for btn in row] +
-        [btn for page in AdminReplyKeyboard.PAGES for btn in page] +
-        ["◀️ Prev", "Next ▶️", "🏠 Menu"]
-    )
+    # User buttons
+    user_buttons = [btn for row in UserReplyKeyboard.BUTTONS for btn in row]
+
+    # Admin buttons (Hardcoded to match AdminKeyboards.admin_reply_keyboard)
+    admin_buttons = [
+        "📦 +Stock", "📊 Stats", "🔧 Logs",
+        "💰 Trans", "📢 BC", "🏠 Menu"
+    ]
+
+    all_buttons = user_buttons + admin_buttons
+    # Unique buttons only
+    all_buttons = list(set(all_buttons))
+
     return filters.TEXT & filters.Regex(f"^({'|'.join(map(lambda x: x.replace('|', '\\|'), all_buttons))})$")
 
 

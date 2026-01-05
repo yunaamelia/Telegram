@@ -85,7 +85,7 @@ class Keyboards:
     ) -> InlineKeyboardMarkup:
         """
         Product list with 3-column numbered buttons and pagination.
-        
+
         Layout:
         [1️⃣] [2️⃣] [3️⃣]
         [4️⃣] [5️⃣] [6️⃣]
@@ -135,7 +135,7 @@ class Keyboards:
     ) -> InlineKeyboardMarkup:
         """
         Product detail keyboard.
-        
+
         Layout:
         [💳 Buy Now (Rp XX.XXX)]
         [🔙 Back] [🏠 Home] [❓ Help]
@@ -170,7 +170,7 @@ class Keyboards:
     ) -> InlineKeyboardMarkup:
         """
         Pending payment keyboard.
-        
+
         Layout:
         [✅ Sudah Bayar] [❌ Batal] [ℹ️ Info]
         """
@@ -197,7 +197,7 @@ class Keyboards:
     ) -> InlineKeyboardMarkup:
         """
         Transaction history with 3-column numbered buttons.
-        
+
         Layout:
         [1️⃣] [2️⃣] [3️⃣]
         [4️⃣] [5️⃣] [6️⃣]
@@ -243,7 +243,7 @@ class Keyboards:
     def history_filters() -> InlineKeyboardMarkup:
         """
         Transaction history filter keyboard - 3 columns.
-        
+
         Layout:
         [📋 Semua] [✅ Paid] [⏳ Pending]
         [🔙 Back] [🏠 Home] [❓ Help]
@@ -299,7 +299,7 @@ class Keyboards:
     def help_categories() -> InlineKeyboardMarkup:
         """
         Help center - 3 columns.
-        
+
         Layout:
         [📖 Order] [💳 Bayar] [❓ FAQ]
         [📞 Contact] [🏠 Home] [🔙 Back]
@@ -350,105 +350,3 @@ class Keyboards:
                 InlineKeyboardButton("🔙 Back", callback_data=f"nav:{back_target}")
             )
         return InlineKeyboardMarkup([buttons])
-
-    # ==================== Admin Keyboards ====================
-
-    @staticmethod
-    def admin_menu() -> InlineKeyboardMarkup:
-        """
-        Admin main menu - 3 columns.
-        
-        Layout:
-        [📦 Stock] [🛍️ Produk] [💰 Trans]
-        [📢 Broadcast] [👥 Users] [📊 Stats]
-        [⚙️ System] [🏠 Home] [❓ Help]
-        """
-        keyboard = [
-            [
-                InlineKeyboardButton("📦 Stock", callback_data="admin:stock"),
-                InlineKeyboardButton("🛍️ Produk", callback_data="admin:products"),
-                InlineKeyboardButton("💰 Trans", callback_data="admin:transactions")
-            ],
-            [
-                InlineKeyboardButton("📢 Broadcast", callback_data="admin:broadcast"),
-                InlineKeyboardButton("👥 Users", callback_data="admin:users"),
-                InlineKeyboardButton("📊 Stats", callback_data="admin:stats")
-            ],
-            [
-                InlineKeyboardButton("⚙️ System", callback_data="admin:system"),
-                InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
-                InlineKeyboardButton("❓ Help", callback_data="nav:help")
-            ]
-        ]
-        return InlineKeyboardMarkup(keyboard)
-
-    @staticmethod
-    def admin_stock_list(
-        products: List[Dict],
-        page: int = 1,
-        items_per_page: int = 6
-    ) -> InlineKeyboardMarkup:
-        """Admin stock list with 3-column numbered buttons."""
-        total_pages = max(1, math.ceil(len(products) / items_per_page))
-        page = max(1, min(page, total_pages))
-
-        start_idx = (page - 1) * items_per_page
-        end_idx = start_idx + items_per_page
-        page_products = products[start_idx:end_idx]
-
-        keyboard = []
-
-        # Number buttons - 3 per row
-        for i in range(0, len(page_products), 3):
-            row = []
-            for j in range(3):
-                idx = i + j
-                if idx < len(page_products):
-                    product = page_products[idx]
-                    row.append(
-                        InlineKeyboardButton(
-                            Keyboards.NUMBER_EMOJIS[idx],
-                            callback_data=f"admin:stock:{product['product_code']}"
-                        )
-                    )
-            keyboard.append(row)
-
-        # Navigation row
-        keyboard.append(
-            Keyboards.nav_row_3col(
-                back_target="admin:menu",
-                page=page,
-                total_pages=total_pages,
-                prefix="admin:stocklist"
-            )
-        )
-
-        return InlineKeyboardMarkup(keyboard)
-
-    @staticmethod
-    def broadcast_targets() -> InlineKeyboardMarkup:
-        """Broadcast target selection - 3 columns."""
-        keyboard = [
-            [
-                InlineKeyboardButton("👥 Semua", callback_data="admin:broadcast:all"),
-                InlineKeyboardButton("🛒 Buyers", callback_data="admin:broadcast:buyers"),
-                InlineKeyboardButton("📅 Active", callback_data="admin:broadcast:active_7days")
-            ],
-            [
-                InlineKeyboardButton("❌ Cancel", callback_data="admin:cancel"),
-                InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
-                InlineKeyboardButton("❓ Help", callback_data="nav:help")
-            ]
-        ]
-        return InlineKeyboardMarkup(keyboard)
-
-    @staticmethod
-    def refund_actions(transaction_id: str) -> InlineKeyboardMarkup:
-        """Refund approval/rejection - 3 columns."""
-        keyboard = [[
-            InlineKeyboardButton("✅ Approve", callback_data=f"admin:refund:approve:{transaction_id}"),
-            InlineKeyboardButton("❌ Reject", callback_data=f"admin:refund:reject:{transaction_id}"),
-            InlineKeyboardButton("📋 Detail", callback_data=f"history:view:{transaction_id}")
-        ]]
-        return InlineKeyboardMarkup(keyboard)
-

@@ -9,7 +9,8 @@ from telegram.ext import ContextTypes, CommandHandler
 from config import config
 from database.db import Database
 from utils.keyboards import Keyboards
-from utils.reply_keyboards import UserReplyKeyboard, AdminReplyKeyboard
+from utils.reply_keyboards import UserReplyKeyboard
+from utils.admin_keyboards import AdminKeyboards
 from utils.formatters import format_welcome
 from utils.messages import safe_edit_or_send
 from utils.logger import get_logger
@@ -52,13 +53,13 @@ async def set_dynamic_commands(
     """Set dynamic commands for a specific user based on role."""
     try:
         scope = BotCommandScopeChat(chat_id=user_id)
-        
+
         if is_admin:
             # Admin gets both user and admin commands
             commands = USER_COMMANDS + ADMIN_COMMANDS
         else:
             commands = USER_COMMANDS
-        
+
         await bot.set_my_commands(commands, scope=scope)
         logger.debug(f"Set commands for user {user_id}, admin={is_admin}")
     except Exception as e:
@@ -104,9 +105,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     # Choose reply keyboard based on role
     if is_admin:
-        context.user_data["admin_kb_page"] = 1
-        reply_kb = AdminReplyKeyboard.build(1)
+        # New: Use AdminKeyboards for single-page admin menu
+        reply_kb = AdminKeyboards.admin_reply_keyboard()
         role_text = "👑 *Admin Mode*\n\n"
+        # No more page tracking needed for admin reply keyboard
+        context.user_data.pop("admin_kb_page", None)
     else:
         reply_kb = UserReplyKeyboard.build()
         role_text = ""
@@ -140,7 +143,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             parse_mode="MarkdownV2",
             reply_markup=Keyboards.main_menu()  # Inline keyboard
         )
-    
+
     # Send reply keyboard in separate message
     await update.message.reply_text(
         "⬇️ Gunakan menu di bawah untuk navigasi cepat:",
@@ -179,5 +182,3 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # Handler exports
 start_handler = CommandHandler("start", start_command)
 main_menu_handler = CommandHandler("cancel", cancel_command)
-
-

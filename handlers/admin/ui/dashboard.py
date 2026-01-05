@@ -3,20 +3,28 @@ Admin dashboard UI handler.
 Main entry point for admin interface.
 """
 
-from telegram import Update
-from telegram.ext import ContextTypes, CallbackQueryHandler, MessageHandler, filters, CommandHandler
-
 from database.db import Database
+from telegram import Update
+from telegram.ext import (
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 from utils.admin_keyboards import AdminKeyboards
 from utils.logger import get_logger
 
 logger = get_logger("admin.ui")
 
 
-async def show_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def show_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE, expanded: bool = False) -> None:
     """
     Show admin dashboard.
-    
+
+    Args:
+        expanded: If True, show expanded quick actions
+
     Entry points:
     - Callback: admin:dashboard
     - Reply keyboard: 🏠 Menu
@@ -25,10 +33,10 @@ async def show_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     query = update.callback_query
     if query:
         await query.answer()
-    
+
     user = update.effective_user
     db: Database = context.bot_data["db"]
-    
+
     # Check admin permission
     if not await db.is_admin(user.id):
         text = "⛔ Access denied\\. Admin only\\."
@@ -37,10 +45,10 @@ async def show_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         else:
             await update.message.reply_text(text, parse_mode="MarkdownV2")
         return
-    
+
     # Get quick stats
     stats = await get_quick_stats(db)
-    
+
     text = (
         "*🔐 Admin Dashboard*\n"
         "━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -51,21 +59,13 @@ async def show_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         f"⚠️ Low Stock: `{stats.get('low_stock_count', 0)}`\n\n"
         "_Select category below:_"
     )
-    
-    keyboard = AdminKeyboards.main_dashboard()
-    
+
+    keyboard = AdminKeyboards.main_dashboard(expanded=expanded)
+
     if query:
-        await query.edit_message_text(
-            text,
-            parse_mode="MarkdownV2",
-            reply_markup=keyboard
-        )
+        await query.edit_message_text(text, parse_mode="MarkdownV2", reply_markup=keyboard)
     else:
-        await update.message.reply_text(
-            text,
-            parse_mode="MarkdownV2",
-            reply_markup=keyboard
-        )
+        await update.message.reply_text(text, parse_mode="MarkdownV2", reply_markup=keyboard)
 
 
 async def show_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -75,18 +75,18 @@ async def show_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """
     query = update.callback_query
     await query.answer()
-    
+
     user = update.effective_user
     db: Database = context.bot_data["db"]
-    
+
     # Check admin permission
     if not await db.is_admin(user.id):
         await query.answer("⛔ Access denied", show_alert=True)
         return
-    
+
     # Parse callback: admin:menu:stock
     category = query.data.split(":")[-1]
-    
+
     menu_map = {
         "stock": (AdminKeyboards.stock_management_menu, "*📦 Stock Management*"),
         "products": (AdminKeyboards.product_management_menu, "*🛍️ Product Management*"),
@@ -95,20 +95,16 @@ async def show_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "reports": (AdminKeyboards.reports_menu, "*📊 Reports \\& Analytics*"),
         "system": (AdminKeyboards.system_menu, "*⚙️ System \\& Settings*"),
     }
-    
+
     if category not in menu_map:
         await query.answer("❌ Invalid category", show_alert=True)
         return
-    
+
     keyboard_func, title = menu_map[category]
-    
+
     text = f"{title}\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_"
-    
-    await query.edit_message_text(
-        text,
-        parse_mode="MarkdownV2",
-        reply_markup=keyboard_func()
-    )
+
+    await query.edit_message_text(text, parse_mode="MarkdownV2", reply_markup=keyboard_func())
 
 
 async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -118,17 +114,26 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     """
     query = update.callback_query
     await query.answer()
-    
+
     user = update.effective_user
     db: Database = context.bot_data["db"]
-    
+
     if not await db.is_admin(user.id):
         await query.answer("⛔ Access denied", show_alert=True)
         return
-    
+
     # Parse callback: admin:quick:addstock
     action = query.data.split(":")[-1]
-    
+
+    # Handle expand/collapse
+    if action == "expand":
+        await show_dashboard(update, context, expanded=True)
+        return
+
+    if action == "collapse":
+        await show_dashboard(update, context, expanded=False)
+        return
+
     # Route to appropriate handler
     action_map = {
         "addstock": "admin:stock:add",
@@ -137,35 +142,51 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         "logs": "admin:system:logs",
         "backup": "admin:system:backup",
         "broadcast": "admin:system:broadcast",
-        "toggle": "noop"  # Toggle quick actions visibility
     }
-    
-    if action == "toggle":
-        # Just refresh dashboard for now
-        await show_dashboard(update, context)
-        return
-    
+
     target = action_map.get(action)
     if target:
         # Store target action in context for routing
         context.user_data["_quick_action_target"] = target
-        
+
         # Route to the appropriate handler based on target
         if target.startswith("admin:stock:"):
             from handlers.admin.ui.stock_ui import show_add_stock_form
+
             await show_add_stock_form(update, context)
         elif target.startswith("admin:system:"):
             from handlers.admin.ui.system_ui import handle_system_action
+
             # Create a mock data for the handler
             context.user_data["_callback_data"] = target
             await handle_system_action(update, context)
         elif target.startswith("admin:trans:"):
             from handlers.admin.ui.transaction_ui import show_all_transactions
+
             await show_all_transactions(update, context)
-        
+
         # Clean up
         context.user_data.pop("_quick_action_target", None)
         context.user_data.pop("_callback_data", None)
+
+
+async def handle_fullmenu_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle full menu toggle - show all categories inline."""
+    query = update.callback_query
+    await query.answer()
+
+    user = update.effective_user
+    db: Database = context.bot_data["db"]
+
+    if not await db.is_admin(user.id):
+        await query.answer("⛔ Access denied", show_alert=True)
+        return
+
+    keyboard = AdminKeyboards.main_dashboard_full()
+
+    await query.edit_message_text(
+        "*📂 Full Menu*\n━━━━━━━━━━━━━━━━━━━━\n\n_All categories:_", parse_mode="MarkdownV2", reply_markup=keyboard
+    )
 
 
 async def handle_noop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -182,29 +203,26 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
     text = update.message.text
     user = update.effective_user
     db: Database = context.bot_data["db"]
-    
+
     if not await db.is_admin(user.id):
         return  # Silently ignore non-admin
-    
+
     button_map = {
         "📦 +Stock": "admin:stock:add",
         "📊 Stats": "admin:system:stats",
         "🔧 Logs": "admin:system:logs",
         "💰 Trans": "admin:trans:all",
         "📢 BC": "admin:system:broadcast",
-        "🏠 Menu": "admin:dashboard"
+        "🏠 Menu": "admin:dashboard",
     }
-    
+
     target = button_map.get(text)
-    
+
     if target == "admin:dashboard":
         await show_dashboard(update, context)
     elif target:
         # Send message with appropriate menu
-        await update.message.reply_text(
-            "_Loading\\.\\.\\._",
-            parse_mode="MarkdownV2"
-        )
+        await update.message.reply_text("_Loading\\.\\.\\._", parse_mode="MarkdownV2")
         # The actual handler will be called via callback
 
 
@@ -213,11 +231,11 @@ async def get_quick_stats(db: Database) -> dict:
     try:
         total_users = await db.get_user_count()
         total_products = len(await db.get_all_products())
-        
+
         # Count transactions by status
         transactions = await db.get_all_transactions(limit=1000)
         total_transactions = len(transactions)
-        
+
         # Count low stock products
         products = await db.get_active_products()
         low_stock_count = 0
@@ -225,12 +243,12 @@ async def get_quick_stats(db: Database) -> dict:
             stock_count = await db.get_available_stock_count(product["product_code"])
             if stock_count < 5:
                 low_stock_count += 1
-        
+
         return {
             "total_users": total_users,
             "total_products": total_products,
             "total_transactions": total_transactions,
-            "low_stock_count": low_stock_count
+            "low_stock_count": low_stock_count,
         }
     except Exception as e:
         logger.error(f"Failed to get quick stats: {e}")
@@ -249,5 +267,6 @@ dashboard_handlers = [
     CallbackQueryHandler(show_dashboard, pattern=r"^admin:dashboard$"),
     CallbackQueryHandler(show_category_menu, pattern=r"^admin:menu:"),
     CallbackQueryHandler(handle_quick_action, pattern=r"^admin:quick:"),
+    CallbackQueryHandler(handle_fullmenu_toggle, pattern=r"^admin:fullmenu:toggle$"),
     CallbackQueryHandler(handle_noop, pattern=r"^noop$"),
 ]

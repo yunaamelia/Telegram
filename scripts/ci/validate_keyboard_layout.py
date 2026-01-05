@@ -9,7 +9,8 @@ import os
 # Add project root to path
 sys.path.append(os.getcwd())
 
-from utils.reply_keyboards import UserReplyKeyboard, AdminReplyKeyboard
+from utils.reply_keyboards import UserReplyKeyboard
+from utils.admin_keyboards import AdminKeyboards
 
 def validate_keyboard(name, keyboard):
     print(f"Checking {name}...")
@@ -36,11 +37,9 @@ def main():
     if not validate_keyboard("UserReplyKeyboard", UserReplyKeyboard.build()):
         success = False
 
-    # Check Admin Keyboard (Page 1..Total)
-    total_pages = AdminReplyKeyboard.get_total_pages()
-    for page in range(1, total_pages + 1):
-        if not validate_keyboard(f"AdminReplyKeyboard (Page {page})", AdminReplyKeyboard.build(page)):
-            success = False
+    # Check Admin Keyboard
+    if not validate_keyboard("AdminReplyKeyboard (Quick Actions)", AdminKeyboards.admin_reply_keyboard()):
+        success = False
 
     if success:
         print("\n✅ All keyboard layouts valid.")
