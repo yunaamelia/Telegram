@@ -13,8 +13,9 @@ from telegram.ext import (
     filters,
 )
 from utils.admin_keyboards import AdminKeyboards
-from utils.formatters import escape_md
 from utils.logger import get_logger
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("admin.wizard.stock")
 
@@ -77,37 +78,39 @@ class StockWizard:
 
         # Check admin
         if not await db.is_admin(user.id):
-            text = "⛔ Access denied\\."
+            text = "⛔ Access denied."
             if query:
-                await query.edit_message_text(text, parse_mode="MarkdownV2")
+                await query.edit_message_text(text)
             else:
-                await update.message.reply_text(text, parse_mode="MarkdownV2")
+                await update.message.reply_text(text)
             return ConversationHandler.END
 
         # Get all active products
         products = await db.get_active_products()
 
         if not products:
-            text = "❌ No products available\\. Add a product first\\."
+            text = "❌ No products available. Add a product first."
             if query:
-                await query.edit_message_text(text, parse_mode="MarkdownV2")
+                await query.edit_message_text(text)
             else:
-                await update.message.reply_text(text, parse_mode="MarkdownV2")
+                await update.message.reply_text(text)
             return ConversationHandler.END
 
         # Store products for later
         context.user_data["wizard_products"] = products
 
         # Format product list message
-        lines = ["*📦 Add Stock Wizard* \\(Step 1/3\\)", "━━━━━━━━━━━━━━━━━━━━\n", "*Select product:*\n"]
+        lines = [
+            f"{vs.header('Add Stock Wizard (Step 1/3)', '', icon='📦')}",
+            f"\n{uf.bold('Select product:')}\n",
+        ]
 
         for idx, product in enumerate(products[:6], 1):
             stock_count = await db.get_available_stock_count(product["product_code"])
             stock_indicator = "⚠️" if stock_count < 5 else "✅" if stock_count > 0 else "❌"
-            name = escape_md(product["name"])
 
-            lines.append(f"*{idx}\\.* __{name}__")
-            lines.append(f"   📊 Stock: *{stock_count}* {stock_indicator}\n")
+            lines.append(f"{uf.bold(f'{idx}.')} {product['name']}")
+            lines.append(f"   📊 Stock: {uf.bold(str(stock_count))} {stock_indicator}")
 
         text = "\n".join(lines)
 
@@ -115,9 +118,9 @@ class StockWizard:
         keyboard = AdminKeyboards.product_list(products, page=1, items_per_page=6, context="addstock")
 
         if query:
-            await query.edit_message_text(text, parse_mode="MarkdownV2", reply_markup=keyboard)
+            await query.edit_message_text(text, reply_markup=keyboard)
         else:
-            await update.message.reply_text(text, parse_mode="MarkdownV2", reply_markup=keyboard)
+            await update.message.reply_text(text, reply_markup=keyboard)
 
         return SELECT_PRODUCT
 
@@ -138,24 +141,21 @@ class StockWizard:
         product = await db.get_product(product_code)
 
         if not product:
-            await query.edit_message_text("❌ Product not found\\.", parse_mode="MarkdownV2")
+            await query.edit_message_text("❌ Product not found.")
             return ConversationHandler.END
 
-        name = escape_md(product["name"])
+        name = product["name"]
 
-        text = (
-            f"*📦 Add Stock* \\- {name}\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "*Step 2/3:* Enter stock data\n\n"
-            "*Format:*\n"
-            "`email:password:2fa_secret:notes`\n\n"
-            "*Example:*\n"
-            "`user@mail\\.com:pass123:JBSWY3DP:Valid Dec 2026`\n\n"
-            "_2FA and notes are optional\\. Use `:` as separator\\._\n\n"
-            "Type `/cancel` to abort\\."
-        )
+        text = f"{vs.header(f'Add Stock - {name}', '', icon='📦')}\n\n"
+        text += f"{uf.bold('Step 2/3:')} Enter stock data\n\n"
+        text += f"{uf.bold('Format:')}\n"
+        text += f"{uf.monospace('email:password:2fa_secret:notes')}\n\n"
+        text += f"{uf.bold('Example:')}\n"
+        text += f"{uf.monospace('user@mail.com:pass123:JBSWY3DP:Valid Dec 2026')}\n\n"
+        text += f"{uf.italic('2FA and notes are optional. Use : as separator.')}\n\n"
+        text += "Type /cancel to abort."
 
-        await query.edit_message_text(text, parse_mode="MarkdownV2")
+        await query.edit_message_text(text)
 
         return INPUT_STOCK_DATA
 
@@ -168,9 +168,7 @@ class StockWizard:
         is_valid, error_msg, data = validate_stock_entry(stock_entry)
 
         if not is_valid:
-            await update.message.reply_text(
-                f"❌ *Invalid format*\n\n" f"{error_msg}\n\n" "Please try again:", parse_mode="Markdown"
-            )
+            await update.message.reply_text(f"❌ {uf.bold('Invalid format')}\n\n{error_msg}\n\nPlease try again:")
             return INPUT_STOCK_DATA
 
         # Store data
@@ -185,27 +183,24 @@ class StockWizard:
             return ConversationHandler.END
 
         # Show confirmation
-        name = escape_md(product["name"])
-        email = escape_md(data["email"])
-        password_masked = escape_md(data["password"][:4] + "****")
+        name = product["name"]
+        password_masked = data["password"][:4] + "****"
 
         lines = [
-            "*📦 Confirm Stock Entry*",
-            "━━━━━━━━━━━━━━━━━━━━\n",
-            f"*Product:* {name}",
-            f"*Email:* `{email}`",
-            f"*Password:* `{password_masked}`",
+            f"{vs.header('Confirm Stock Entry', '', icon='📦')}",
+            f"\n{uf.bold('Product:')} {name}",
+            f"{uf.bold('Email:')} {uf.monospace(data['email'])}",
+            f"{uf.bold('Password:')} {uf.monospace(password_masked)}",
         ]
 
         if data.get("two_fa_secret"):
-            two_fa = escape_md(data["two_fa_secret"][:6] + "...")
-            lines.append(f"*2FA:* `{two_fa}`")
+            two_fa = data["two_fa_secret"][:6] + "..."
+            lines.append(f"{uf.bold('2FA:')} {uf.monospace(two_fa)}")
 
         if data.get("notes"):
-            notes = escape_md(data["notes"])
-            lines.append(f"*Notes:* _{notes}_")
+            lines.append(f"{uf.bold('Notes:')} {uf.italic(data['notes'])}")
 
-        lines.append("\n*Confirm this entry?*")
+        lines.append(f"\n{uf.bold('Confirm this entry?')}")
 
         text = "\n".join(lines)
 
@@ -216,7 +211,7 @@ class StockWizard:
             ]
         ]
 
-        await update.message.reply_text(text, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
         return CONFIRM
 
@@ -230,7 +225,7 @@ class StockWizard:
         data = context.user_data.get("stock_wizard_data")
 
         if not product_code or not data:
-            await query.edit_message_text("❌ Session expired\\. Please start again\\.", parse_mode="MarkdownV2")
+            await query.edit_message_text("❌ Session expired. Please start again.")
             return ConversationHandler.END
 
         db: Database = context.bot_data["db"]
@@ -250,31 +245,31 @@ class StockWizard:
             stock_count = await db.get_available_stock_count(product_code)
             product = await db.get_product(product_code)
 
-            name = escape_md(product["name"])
-            email_short = escape_md(data["email"][:15] + "...")
+            name = product["name"]
+            email_short = data["email"][:15] + "..."
 
-            text = (
-                "*✅ Stock Added Successfully\\!*\n\n"
-                f"📦 *Product:* {name}\n"
-                f"📧 *Email:* `{email_short}`\n"
-                f"📊 *Total Stock:* `{stock_count}`\n\n"
-                "_Add more stock or return to menu?_"
-            )
+            text = f"✅ {uf.bold('Stock Added Successfully!')}\n\n"
+            text += f"📦 {uf.bold('Product:')} {name}\n"
+            text += f"📧 {uf.bold('Email:')} {uf.monospace(email_short)}\n"
+            text += f"📊 {uf.bold('Total Stock:')} {uf.monospace(str(stock_count))}\n\n"
+            text += f"{uf.italic('Add more stock or return to menu?')}"
 
             keyboard = AdminKeyboards.after_stock_added(product_code)
 
-            await query.edit_message_text(text, parse_mode="MarkdownV2", reply_markup=keyboard)
+            await query.edit_message_text(text, reply_markup=keyboard)
 
             # Clear context
             StockWizard.clear_context(context)
 
-            logger.info(f"Stock added: product={product_code}, email={data['email']}, by={update.effective_user.id}")
+            logger.info(
+                f"Stock added: product={product_code}, " f"email={data['email']}, by={update.effective_user.id}"
+            )
 
             return ConversationHandler.END
 
         except Exception as e:
             logger.error(f"Failed to add stock: {e}")
-            await query.edit_message_text(f"❌ Error adding stock: {escape_md(str(e))}", parse_mode="MarkdownV2")
+            await query.edit_message_text(f"❌ Error adding stock: {str(e)}")
             return ConversationHandler.END
 
     @staticmethod
@@ -284,14 +279,12 @@ class StockWizard:
         if query:
             await query.answer()
             await query.edit_message_text(
-                "❌ Add stock cancelled\\.",
-                parse_mode="MarkdownV2",
+                "❌ Add stock cancelled.",
                 reply_markup=AdminKeyboards.stock_management_menu(),
             )
         else:
             await update.message.reply_text(
-                "❌ Add stock cancelled\\.",
-                parse_mode="MarkdownV2",
+                "❌ Add stock cancelled.",
                 reply_markup=AdminKeyboards.stock_management_menu(),
             )
 

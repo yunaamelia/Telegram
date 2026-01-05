@@ -13,13 +13,19 @@ from telegram.ext import (
     filters,
 )
 from utils.admin_keyboards import AdminKeyboards
-from utils.formatters import escape_md, format_currency
 from utils.logger import get_logger
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("admin.wizard.product")
 
 # Conversation states
 INPUT_CODE, INPUT_NAME, INPUT_DESCRIPTION, INPUT_PRICE, CONFIRM = range(5)
+
+
+def format_currency_local(amount: int) -> str:
+    """Format currency with dot separator."""
+    return f"Rp {amount:,}".replace(",", ".")
 
 
 class ProductWizard:
@@ -42,29 +48,26 @@ class ProductWizard:
 
         # Check admin
         if not await db.is_admin(user.id):
-            text = "⛔ Access denied\\."
+            text = "⛔ Access denied."
             if query:
-                await query.edit_message_text(text, parse_mode="MarkdownV2")
+                await query.edit_message_text(text)
             else:
-                await update.message.reply_text(text, parse_mode="MarkdownV2")
+                await update.message.reply_text(text)
             return ConversationHandler.END
 
         # Clear any existing wizard data
         ProductWizard.clear_context(context)
 
-        text = (
-            "*🛍️ Add Product Wizard* \\(Step 1/5\\)\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "*Enter product code:*\n\n"
-            "_Use lowercase, underscore allowed\\._\n"
-            "_Example: `github_student_fresh`_\n\n"
-            "Type `/cancel` to abort\\."
-        )
+        text = f"{vs.header('Add Product Wizard (Step 1/5)', '', icon='🛍️')}\n\n"
+        text += f"{uf.bold('Enter product code:')}\n\n"
+        text += f"{uf.italic('Use lowercase, underscore allowed.')}\n"
+        text += f"{uf.italic('Example:')} {uf.monospace('github_student_fresh')}\n\n"
+        text += "Type /cancel to abort."
 
         if query:
-            await query.edit_message_text(text, parse_mode="MarkdownV2")
+            await query.edit_message_text(text)
         else:
-            await update.message.reply_text(text, parse_mode="MarkdownV2")
+            await update.message.reply_text(text)
 
         return INPUT_CODE
 
@@ -75,15 +78,11 @@ class ProductWizard:
 
         # Validate code
         if not code or len(code) < 3:
-            await update.message.reply_text(
-                "❌ Product code minimal 3 karakter\\.\n\nCoba lagi:", parse_mode="MarkdownV2"
-            )
+            await update.message.reply_text("❌ Product code minimal 3 karakter.\n\nCoba lagi:")
             return INPUT_CODE
 
         if not code.replace("_", "").isalnum():
-            await update.message.reply_text(
-                "❌ Code hanya boleh huruf, angka, dan underscore\\.\n\nCoba lagi:", parse_mode="MarkdownV2"
-            )
+            await update.message.reply_text("❌ Code hanya boleh huruf, angka, dan underscore.\n\nCoba lagi:")
             return INPUT_CODE
 
         # Check if already exists
@@ -91,21 +90,17 @@ class ProductWizard:
         existing = await db.get_product(code)
 
         if existing:
-            await update.message.reply_text(
-                f"❌ Product code `{escape_md(code)}` sudah ada\\!\n\nGunakan code lain:", parse_mode="MarkdownV2"
-            )
+            await update.message.reply_text("❌ Product code {uf.monospace(code)} sudah ada!\n\nGunakan code lain:")
             return INPUT_CODE
 
         # Store code
         context.user_data["product_wizard_code"] = code
 
-        text = (
-            f"✅ Product code: `{escape_md(code)}`\n\n"
-            "*Step 2/5:* Masukkan nama produk:\n\n"
-            "_Contoh: GitHub Student Developer Pack_"
-        )
+        text = f"✅ Product code: {uf.monospace(code)}\n\n"
+        text += f"{uf.bold('Step 2/5:')} Masukkan nama produk:\n\n"
+        text += f"{uf.italic('Contoh: GitHub Student Developer Pack')}"
 
-        await update.message.reply_text(text, parse_mode="MarkdownV2")
+        await update.message.reply_text(text)
 
         return INPUT_NAME
 
@@ -115,27 +110,21 @@ class ProductWizard:
         name = update.message.text.strip()
 
         if not name or len(name) < 3:
-            await update.message.reply_text(
-                "❌ Nama produk minimal 3 karakter\\.\n\nCoba lagi:", parse_mode="MarkdownV2"
-            )
+            await update.message.reply_text("❌ Nama produk minimal 3 karakter.\n\nCoba lagi:")
             return INPUT_NAME
 
         if len(name) > 100:
-            await update.message.reply_text(
-                "❌ Nama produk maksimal 100 karakter\\.\n\nCoba lagi:", parse_mode="MarkdownV2"
-            )
+            await update.message.reply_text("❌ Nama produk maksimal 100 karakter.\n\nCoba lagi:")
             return INPUT_NAME
 
         # Store name
         context.user_data["product_wizard_name"] = name
 
-        text = (
-            f"✅ Nama: *{escape_md(name)}*\n\n"
-            "*Step 3/5:* Masukkan deskripsi produk:\n\n"
-            "_Contoh: Akun GitHub Student dengan akses ke berbagai tools premium\\._"
-        )
+        text = f"✅ Nama: {uf.bold(name)}\n\n"
+        text += f"{uf.bold('Step 3/5:')} Masukkan deskripsi produk:\n\n"
+        text += f"{uf.italic('Contoh: Akun GitHub Student dengan akses ke berbagai tools premium.')}"
 
-        await update.message.reply_text(text, parse_mode="MarkdownV2")
+        await update.message.reply_text(text)
 
         return INPUT_DESCRIPTION
 
@@ -145,21 +134,18 @@ class ProductWizard:
         description = update.message.text.strip()
 
         if not description or len(description) < 10:
-            await update.message.reply_text(
-                "❌ Deskripsi minimal 10 karakter\\.\n\nCoba lagi:", parse_mode="MarkdownV2"
-            )
+            await update.message.reply_text("❌ Deskripsi minimal 10 karakter.\n\nCoba lagi:")
             return INPUT_DESCRIPTION
 
         # Store description
         context.user_data["product_wizard_desc"] = description
 
-        text = (
-            f"✅ Deskripsi: _{escape_md(description[:50])}\\.\\.\\._\n\n"
-            "*Step 4/5:* Masukkan harga \\(Rupiah\\):\n\n"
-            "_Contoh: `50000` atau `50.000`_"
-        )
+        desc_preview = description[:50] + "..." if len(description) > 50 else description
+        text = f"✅ Deskripsi: {uf.italic(desc_preview)}\n\n"
+        text += f"{uf.bold('Step 4/5:')} Masukkan harga (Rupiah):\n\n"
+        text += f"{uf.italic('Contoh:')} {uf.monospace('50000')} atau {uf.monospace('50.000')}"
 
-        await update.message.reply_text(text, parse_mode="MarkdownV2")
+        await update.message.reply_text(text)
 
         return INPUT_PRICE
 
@@ -176,8 +162,7 @@ class ProductWizard:
                 raise ValueError("Price too high")
         except (ValueError, TypeError):
             await update.message.reply_text(
-                "❌ Harga tidak valid\\. Masukkan angka antara 1\\.000 \\- 100\\.000\\.000\n\nCoba lagi:",
-                parse_mode="MarkdownV2",
+                "❌ Harga tidak valid. Masukkan angka antara 1.000 - 100.000.000\n\n" "Coba lagi:"
             )
             return INPUT_PRICE
 
@@ -189,15 +174,12 @@ class ProductWizard:
         name = context.user_data.get("product_wizard_name")
         desc = context.user_data.get("product_wizard_desc")
 
-        text = (
-            "*📦 Confirm New Product*\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"*Code:* `{escape_md(code)}`\n"
-            f"*Name:* {escape_md(name)}\n"
-            f"*Price:* `{escape_md(format_currency(price))}`\n\n"
-            f"*Description:*\n_{escape_md(desc)}_\n\n"
-            "*Confirm to add this product?*"
-        )
+        text = f"{vs.header('Confirm New Product', '', icon='📦')}\n\n"
+        text += f"{uf.bold('Code:')} {uf.monospace(code)}\n"
+        text += f"{uf.bold('Name:')} {name}\n"
+        text += f"{uf.bold('Price:')} {uf.monospace(format_currency_local(price))}\n\n"
+        text += f"{uf.bold('Description:')}\n{uf.italic(desc)}\n\n"
+        text += f"{uf.bold('Confirm to add this product?')}"
 
         keyboard = [
             [
@@ -206,7 +188,7 @@ class ProductWizard:
             ]
         ]
 
-        await update.message.reply_text(text, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
         return CONFIRM
 
@@ -222,7 +204,7 @@ class ProductWizard:
         price = context.user_data.get("product_wizard_price")
 
         if not all([code, name, desc, price]):
-            await query.edit_message_text("❌ Session expired\\. Please start again\\.", parse_mode="MarkdownV2")
+            await query.edit_message_text("❌ Session expired. Please start again.")
             return ConversationHandler.END
 
         db: Database = context.bot_data["db"]
@@ -231,28 +213,26 @@ class ProductWizard:
             # Add product to database
             await db.add_product(product_code=code, name=name, description=desc, price=price)
 
-            text = (
-                "*✅ Product Added Successfully\\!*\n\n"
-                f"📦 *Code:* `{escape_md(code)}`\n"
-                f"🏷️ *Name:* {escape_md(name)}\n"
-                f"💰 *Price:* `{escape_md(format_currency(price))}`\n\n"
-                "_Add stock or return to menu?_"
-            )
+            text = f"✅ {uf.bold('Product Added Successfully!')}\n\n"
+            text += f"📦 {uf.bold('Code:')} {uf.monospace(code)}\n"
+            text += f"🏷️ {uf.bold('Name:')} {name}\n"
+            text += f"💰 {uf.bold('Price:')} {uf.monospace(format_currency_local(price))}\n\n"
+            text += f"{uf.italic('Add stock or return to menu?')}"
 
             keyboard = AdminKeyboards.after_product_added(code)
 
-            await query.edit_message_text(text, parse_mode="MarkdownV2", reply_markup=keyboard)
+            await query.edit_message_text(text, reply_markup=keyboard)
 
             # Clear context
             ProductWizard.clear_context(context)
 
-            logger.info(f"Product added: code={code}, name={name}, price={price}, by={update.effective_user.id}")
+            logger.info(f"Product added: code={code}, name={name}, " f"price={price}, by={update.effective_user.id}")
 
             return ConversationHandler.END
 
         except Exception as e:
             logger.error(f"Failed to add product: {e}")
-            await query.edit_message_text(f"❌ Error adding product: {escape_md(str(e))}", parse_mode="MarkdownV2")
+            await query.edit_message_text(f"❌ Error adding product: {str(e)}")
             return ConversationHandler.END
 
     @staticmethod
@@ -262,14 +242,12 @@ class ProductWizard:
         if query:
             await query.answer()
             await query.edit_message_text(
-                "❌ Add product cancelled\\.",
-                parse_mode="MarkdownV2",
+                "❌ Add product cancelled.",
                 reply_markup=AdminKeyboards.product_management_menu(),
             )
         else:
             await update.message.reply_text(
-                "❌ Add product cancelled\\.",
-                parse_mode="MarkdownV2",
+                "❌ Add product cancelled.",
                 reply_markup=AdminKeyboards.product_management_menu(),
             )
 
