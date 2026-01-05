@@ -13,9 +13,10 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from utils.formatters import escape_md
 from utils.keyboards import Keyboards
 from utils.logger import get_logger
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("admin")
 
@@ -36,9 +37,13 @@ async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("⛔ Akses ditolak. Admin only.")
         return ConversationHandler.END
 
+    text = f"""
+{vs.header('Broadcast Message', '', icon='📢')}
+
+Pilih target audience:
+"""
     await update.message.reply_text(
-        "📢 *Broadcast Message*\n\n" "Pilih target audience:",
-        parse_mode="MarkdownV2",
+        text,
         reply_markup=Keyboards.broadcast_targets(),
     )
     return SELECT_TARGET
@@ -59,13 +64,15 @@ async def select_target(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     target_name = {"all": "Semua User", "buyers": "Buyers Only", "active_7days": "Active 7 Days"}.get(target, target)
 
-    await query.edit_message_text(
-        f"📢 Target: *{escape_md(target_name)}*\n\n"
-        "Masukkan pesan broadcast:\n"
-        "\\(Bisa juga kirim foto/dokumen dengan caption\\)\n\n"
-        "Ketik /cancel untuk membatalkan\\.",
-        parse_mode="MarkdownV2",
-    )
+    text = f"""
+📢 {uf.bold('Target:')} {target_name}
+
+Masukkan pesan broadcast:
+(Bisa juga kirim foto/dokumen dengan caption)
+
+{uf.italic('Ketik /cancel untuk membatalkan.')}
+"""
+    await query.edit_message_text(text)
     return INPUT_MESSAGE
 
 
@@ -95,21 +102,25 @@ async def input_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     db: Database = context.bot_data["db"]
     users = await db.get_users_by_filter(target)
 
-    await update.message.reply_text(
-        f"📢 *Preview Broadcast*\n\n"
-        f"Target: {escape_md(target)} \\({len(users)} users\\)\n"
-        f"Media: {escape_md(media_type)}\n\n"
-        f"*Message:*\n{escape_md(message_text[:500])}\n\n"
-        "Ketik `CONFIRM` untuk mengirim atau /cancel untuk batal\\.",
-        parse_mode="MarkdownV2",
-    )
+    text = f"""
+{vs.header('Preview Broadcast', '', icon='📢')}
+
+{uf.bold('Target:')} {target} ({len(users)} users)
+{uf.bold('Media:')} {media_type}
+
+{uf.bold('Message:')}
+{message_text[:500]}
+
+{uf.italic('Ketik')} {uf.monospace('CONFIRM')} {uf.italic('untuk mengirim atau /cancel untuk batal.')}
+"""
+    await update.message.reply_text(text)
     return CONFIRM
 
 
 async def confirm_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Confirm and send broadcast."""
     if update.message.text.upper() != "CONFIRM":
-        await update.message.reply_text("Ketik `CONFIRM` untuk mengirim atau /cancel untuk batal.")
+        await update.message.reply_text(f"Ketik {uf.monospace('CONFIRM')} untuk mengirim atau /cancel untuk batal.")
         return CONFIRM
 
     target = context.user_data.get("broadcast_target", "all")
@@ -135,10 +146,14 @@ async def confirm_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         target_audience=target,
     )
 
-    await update.message.reply_text(
-        f"✅ *Broadcast Selesai\\!*\n\n" f"📤 Terkirim: `{sent}`\n" f"❌ Gagal: `{failed}`", parse_mode="MarkdownV2"
-    )
-    logger.info(f"Broadcast sent: target={target}, sent={sent}, failed={failed}, by={update.effective_user.id}")
+    text = f"""
+✅ {uf.bold('Broadcast Selesai!')}
+
+📤 {uf.bold('Terkirim:')} {uf.monospace(str(sent))}
+❌ {uf.bold('Gagal:')} {uf.monospace(str(failed))}
+"""
+    await update.message.reply_text(text)
+    logger.info(f"Broadcast sent: target={target}, sent={sent}, failed={failed}")
 
     context.user_data.clear()
     return ConversationHandler.END

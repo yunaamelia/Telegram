@@ -5,13 +5,13 @@ System management handlers for FRIENDS Store Telegram Bot.
 import os
 from datetime import datetime
 
-from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler
-
 from config import config
 from database.db import Database
-from utils.formatters import format_stats, escape_md
+from telegram import Update
+from telegram.ext import CommandHandler, ContextTypes
 from utils.logger import get_logger
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("admin")
 
@@ -40,9 +40,17 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     else:
         stats["uptime_hours"] = 0
 
-    text = format_stats(stats)
+    text = f"""
+{vs.header('Bot Statistics', '', icon='📊')}
 
-    await update.message.reply_text(text, parse_mode="MarkdownV2")
+{uf.bold('👥 Users:')} {uf.monospace(str(stats.get('total_users', 0)))}
+{uf.bold('🕐 Active Today:')} {uf.monospace(str(stats.get('active_today', 0)))}
+{uf.bold('📦 Products:')} {uf.monospace(str(stats.get('total_products', 0)))}
+{uf.bold('📋 Transactions:')} {uf.monospace(str(stats.get('total_transactions', 0)))}
+{uf.bold('💰 Revenue:')} {uf.monospace(f"Rp {stats.get('total_revenue', 0):,}".replace(',', '.'))}
+{uf.bold('⏱️ Uptime:')} {uf.monospace(f"{stats.get('uptime_hours', 0)}h")}
+"""
+    await update.message.reply_text(text)
 
 
 async def logs_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -70,11 +78,12 @@ async def logs_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if len(log_text) > 4000:
             log_text = log_text[-4000:]
 
-        await update.message.reply_text(
-            f"📝 *Recent Logs* (last {len(recent)} lines)\n\n"
-            f"```\n{log_text}\n```",
-            parse_mode="MarkdownV2"
-        )
+        text = f"""
+{vs.header('Recent Logs', f'last {len(recent)} lines', icon='📝')}
+
+{uf.monospace(log_text)}
+"""
+        await update.message.reply_text(text)
 
     except Exception as e:
         await update.message.reply_text(f"❌ Error reading logs: {e}")
@@ -104,14 +113,12 @@ async def backupdb_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         # Send to admin
         with open(backup_path, "rb") as f:
             await update.message.reply_document(
-                document=f,
-                filename=f"backup_{timestamp}.db",
-                caption=f"📦 Database backup created: {escape_md(timestamp)}"
+                document=f, filename=f"backup_{timestamp}.db", caption=f"📦 Database backup created: {timestamp}"
             )
 
     except Exception as e:
         logger.error(f"Backup failed: {e}")
-        await update.message.reply_text(f"❌ Backup failed: {escape_md(str(e))}", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"❌ Backup failed: {e}")
 
 
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -130,15 +137,17 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Require double confirmation
     if context.user_data.get("reset_confirm") != "RESET":
         context.user_data["reset_confirm"] = "pending"
-        await update.message.reply_text(
-            "⚠️ *WARNING: This will delete ALL data!*\n\n"
-            "Type `/reset CONFIRM` to proceed.",
-            parse_mode="MarkdownV2"
-        )
+        text = f"""
+{vs.alert('WARNING: This will delete ALL data!', 'warning')}
+
+Type {uf.monospace('/reset CONFIRM')} to proceed.
+"""
+        await update.message.reply_text(text)
         return
 
     # Actually reset
     import os
+
     db_path = config.database.path
 
     await db.close()
@@ -150,11 +159,12 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     # Re-seed
     from database.seed import seed_database
+
     await seed_database(db)
 
     context.user_data.clear()
     logger.warning(f"Database reset by super admin: {update.effective_user.id}")
-    await update.message.reply_text("🔄 Database reset complete\!", parse_mode="MarkdownV2")
+    await update.message.reply_text(f"🔄 {uf.bold('Database reset complete!')}")
 
 
 async def reset_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -179,27 +189,28 @@ async def testpayment_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/testpayment <transaction_id>`", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"{uf.bold('Usage:')} /testpayment <transaction_id>")
         return
 
     transaction_id = args[0]
 
     from services.payment import PaymentService
+
     payment_service = PaymentService(db)
 
     success, message, result = await payment_service.process_callback(
-        order_id=transaction_id,
-        transaction_status="settlement",
-        fraud_status="accept"
+        order_id=transaction_id, transaction_status="settlement", fraud_status="accept"
     )
 
     if success and result:
         logger.info(f"Test payment simulated: tx={transaction_id}, by={update.effective_user.id}")
-        await update.message.reply_text(
-            f"✅ Payment simulated for `{escape_md(transaction_id)}`\n"
-            f"Status: PAID",
-            parse_mode="MarkdownV2"
-        )
+        text = f"""
+✅ {uf.bold('Payment simulated!')}
+
+🆔 {uf.bold('Transaction:')} {uf.monospace(transaction_id)}
+📊 {uf.bold('Status:')} PAID
+"""
+        await update.message.reply_text(text)
     else:
         await update.message.reply_text(f"❌ {message}")
 
