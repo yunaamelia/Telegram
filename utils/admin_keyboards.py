@@ -4,7 +4,7 @@ All keyboards use 3-column layout for consistency.
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
-from typing import List, Dict, Optional
+from typing import List, Dict
 import math
 
 

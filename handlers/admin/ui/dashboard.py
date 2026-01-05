@@ -5,13 +5,7 @@ Main entry point for admin interface.
 
 from database.db import Database
 from telegram import Update
-from telegram.ext import (
-    CallbackQueryHandler,
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-)
+from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 from utils.admin_keyboards import AdminKeyboards
 from utils.logger import get_logger
 
