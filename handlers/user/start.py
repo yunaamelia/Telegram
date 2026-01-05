@@ -15,6 +15,8 @@ from utils.formatters import format_welcome
 from utils.messages import safe_edit_or_send
 from utils.logger import get_logger
 from utils.rate_limiter import rate_limiter
+from utils.message_templates import MessageTemplates as msg
+from utils.loading_states import loading
 
 logger = get_logger("bot")
 
@@ -71,6 +73,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user = update.effective_user
     db: Database = context.bot_data["db"]
 
+    # Show typing indicator
+    await loading.typing_indicator(update, context)
+
     # Check rate limit
     is_limited, wait_time = rate_limiter.check_rate_limit(user.id)
     if is_limited:
@@ -83,9 +88,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     is_banned, reason = await db.is_user_banned(user.id)
     if is_banned:
         await update.message.reply_text(
-            f"⛔ Kamu diblokir dari menggunakan bot ini.\n"
-            f"Alasan: {reason or 'Tidak disebutkan'}\n\n"
-            f"Hubungi: @{config.bot.support_username}"
+            msg.error(
+                f"Kamu diblokir dari menggunakan bot ini.\nAlasan: {reason or 'Tidak disebutkan'}",
+                f"Hubungi: @{config.bot.support_username}"
+            )
         )
         return
 
