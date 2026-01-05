@@ -2,15 +2,20 @@
 Transaction management handlers for FRIENDS Store Telegram Bot.
 """
 
-from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler
-
 from database.db import Database
 from services.notification import NotificationService
-from utils.formatters import format_currency, escape_md
+from telegram import Update
+from telegram.ext import CommandHandler, ContextTypes
 from utils.logger import get_logger
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("admin")
+
+
+def format_currency_local(amount: int) -> str:
+    """Format currency with dot separator."""
+    return f"Rp {amount:,}".replace(",", ".")
 
 
 async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -45,7 +50,7 @@ async def transactions_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("📋 Tidak ada transaksi.")
         return
 
-    lines = ["📋 *Transaksi Terbaru*\n"]
+    lines = [f"{vs.header('Transaksi Terbaru', '', icon='📋')}"]
 
     for tx in transactions[:20]:
         status_emoji = {
@@ -54,15 +59,15 @@ async def transactions_command(update: Update, context: ContextTypes.DEFAULT_TYP
             "EXPIRED": "❌",
             "CANCELLED": "🚫",
             "REFUND_REQUESTED": "💰",
-            "REFUNDED": "💸"
+            "REFUNDED": "💸",
         }.get(tx["status"], "❓")
 
         lines.append(
-            f"{status_emoji} `{escape_md(tx['merchant_ref'][:20])}`\n"
-            f"   @{escape_md(tx.get('username', 'N/A'))} \| `{escape_md(format_currency(tx['amount']))}`\n"
+            f"{status_emoji} {uf.monospace(tx['merchant_ref'][:20])}\n"
+            f"   @{tx.get('username', 'N/A')} | {uf.monospace(format_currency_local(tx['amount']))}"
         )
 
-    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+    await update.message.reply_text("\n".join(lines))
 
 
 async def refunds_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -79,21 +84,21 @@ async def refunds_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("💰 Tidak ada permintaan refund.")
         return
 
-    lines = ["💰 *Pending Refund Requests*\n"]
+    lines = [f"{vs.header('Pending Refund Requests', '', icon='💰')}"]
 
     for tx in refunds:
         lines.append(
-            f"🆔 `{escape_md(tx['transaction_id'])}`\n"
-            f"   User: @{escape_md(tx.get('username', 'N/A'))} \(ID: `{tx['user_id']}`\)\n"
-            f"   Product: {escape_md(tx.get('product_name', tx['product_code']))}\n"
-            f"   Amount: `{escape_md(format_currency(tx['amount']))}`\n"
+            f"🆔 {uf.monospace(tx['transaction_id'])}\n"
+            f"   {uf.bold('User:')} @{tx.get('username', 'N/A')} (ID: {tx['user_id']})\n"
+            f"   {uf.bold('Product:')} {tx.get('product_name', tx['product_code'])}\n"
+            f"   {uf.bold('Amount:')} {uf.monospace(format_currency_local(tx['amount']))}"
         )
 
-    lines.append("\n*Commands:*")
-    lines.append("`/approverefund <transaction_id>`")
-    lines.append("`/rejectrefund <transaction_id> <reason>`")
+    lines.append(f"\n{uf.bold('Commands:')}")
+    lines.append(f"{uf.monospace('/approverefund <transaction_id>')}")
+    lines.append(f"{uf.monospace('/rejectrefund <transaction_id> <reason>')}")
 
-    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+    await update.message.reply_text("\n".join(lines))
 
 
 async def approverefund_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -104,7 +109,7 @@ async def approverefund_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/approverefund <transaction_id>`", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"{uf.bold('Usage:')} /approverefund <transaction_id>")
         return
 
     transaction_id = args[0]
@@ -127,11 +132,13 @@ async def approverefund_command(update: Update, context: ContextTypes.DEFAULT_TY
     notification = NotificationService(context.bot, db)
     await notification.send_refund_notification(tx["user_id"], approved=True)
 
-    await update.message.reply_text(
-        f"✅ Refund disetujui untuk transaksi `{escape_md(transaction_id)}`\n"
-        f"User `{tx['user_id']}` telah dinotifikasi\.",
-        parse_mode="MarkdownV2"
-    )
+    text = f"""
+✅ {uf.bold('Refund disetujui!')}
+
+🆔 {uf.bold('Transaksi:')} {uf.monospace(transaction_id)}
+👤 {uf.bold('User:')} {tx['user_id']} telah dinotifikasi.
+"""
+    await update.message.reply_text(text)
 
 
 async def rejectrefund_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -142,10 +149,7 @@ async def rejectrefund_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
     args = context.args
     if len(args) < 2:
-        await update.message.reply_text(
-            "Usage: `/rejectrefund <transaction_id> <reason>`",
-            parse_mode="MarkdownV2"
-        )
+        await update.message.reply_text(f"{uf.bold('Usage:')} /rejectrefund <transaction_id> <reason>")
         return
 
     transaction_id = args[0]
@@ -170,12 +174,14 @@ async def rejectrefund_command(update: Update, context: ContextTypes.DEFAULT_TYP
     notification = NotificationService(context.bot, db)
     await notification.send_refund_notification(tx["user_id"], approved=False, reason=reason)
 
-    await update.message.reply_text(
-        f"❌ Refund ditolak untuk transaksi `{escape_md(transaction_id)}`\n"
-        f"Reason: {escape_md(reason)}\n"
-        f"User `{tx['user_id']}` telah dinotifikasi\.",
-        parse_mode="MarkdownV2"
-    )
+    text = f"""
+❌ {uf.bold('Refund ditolak!')}
+
+🆔 {uf.bold('Transaksi:')} {uf.monospace(transaction_id)}
+📝 {uf.bold('Reason:')} {reason}
+👤 {uf.bold('User:')} {tx['user_id']} telah dinotifikasi.
+"""
+    await update.message.reply_text(text)
 
 
 # Handler exports
