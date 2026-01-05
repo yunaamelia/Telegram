@@ -30,9 +30,8 @@ Selamat datang di platform premium digital terpercaya!
 {vs.tag('24/7 Support', 'success')}
 {vs.tag('Secure Payment', 'success')}
 
-{vs.alert('Dapatkan 10% OFF untuk pembelian pertama!', 'info', 'Special Offer')}
-
 {uf.italic('Tap menu di bawah untuk mulai berbelanja →')}"""
+
 
     @staticmethod
     def quick_tour() -> str:
