@@ -4,13 +4,13 @@ Routes callbacks to appropriate handlers.
 """
 
 from telegram import Update
-from telegram.ext import ContextTypes, CallbackQueryHandler
+from telegram.ext import CallbackQueryHandler, ContextTypes
 
 from config import config
 from utils.keyboards import Keyboards
-from utils.formatters import format_welcome
-from utils.messages import safe_edit_or_send
 from utils.logger import get_logger
+from utils.message_templates import MessageTemplates as msg
+from utils.messages import safe_edit_or_send
 
 logger = get_logger("bot")
 
@@ -26,8 +26,7 @@ async def handle_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if target == "main":
         await safe_edit_or_send(
             query, context, user.id,
-            text=format_welcome(config.store.name, user.first_name),
-            parse_mode="MarkdownV2",
+            text=msg.welcome(user.first_name, config.store.name),
             reply_markup=Keyboards.main_menu()
         )
     # Other nav targets handled by their respective handlers
@@ -49,4 +48,3 @@ async def handle_unknown_callback(update: Update, context: ContextTypes.DEFAULT_
 # Main navigation callback handler
 callback_query_handler = CallbackQueryHandler(handle_navigation, pattern=r"^nav:main$")
 noop_handler = CallbackQueryHandler(handle_noop, pattern=r"^noop$")
-

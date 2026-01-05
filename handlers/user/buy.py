@@ -2,21 +2,21 @@
 Purchase flow handlers for FRIENDS Store Telegram Bot.
 """
 
+from datetime import datetime, timedelta
+
 from telegram import Update
-from telegram.ext import ContextTypes, CallbackQueryHandler, CommandHandler
+from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 
 from config import config
 from database.db import Database
 from services.payment import PaymentService
 from utils.keyboards import Keyboards
-from utils.formatters import (
-    format_product_list,
-    format_product_detail,
-    format_payment_created
-)
-from utils.messages import safe_edit_or_send
-from utils.rate_limiter import rate_limiter, purchase_limiter
 from utils.logger import get_logger
+from utils.message_templates import MessageTemplates as msg
+from utils.messages import safe_edit_or_send
+from utils.rate_limiter import purchase_limiter, rate_limiter
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("bot")
 
@@ -34,8 +34,7 @@ async def show_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if not products:
         await safe_edit_or_send(
             query, context, user.id,
-            text="😔 Maaf, tidak ada produk yang tersedia saat ini.\n\n"
-            "Cek kembali nanti!",
+            text=msg.error("Tidak ada produk tersedia", "Cek kembali nanti!"),
             reply_markup=Keyboards.navigation(back_target="main")
         )
         return
@@ -43,10 +42,21 @@ async def show_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Store products for numbered buttons
     context.user_data["products"] = products
 
+    # Convert to template format
+    product_list = [
+        {
+            "name": p["name"],
+            "price": p["price"],
+            "stock_count": p.get("stock_count", 0),
+            "is_bestseller": p.get("is_bestseller", False),
+            "is_new": p.get("is_new", False)
+        }
+        for p in products
+    ]
+
     await safe_edit_or_send(
         query, context, user.id,
-        text=format_product_list(products, page),
-        parse_mode="MarkdownV2",
+        text=msg.product_list(product_list, page),
         reply_markup=Keyboards.product_list(products, page)
     )
 
@@ -59,8 +69,7 @@ async def show_products_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     if not products:
         await update.message.reply_text(
-            "😔 Maaf, tidak ada produk yang tersedia saat ini.\n\n"
-            "Cek kembali nanti!"
+            msg.error("Tidak ada produk tersedia", "Cek kembali nanti!")
         )
         return
 
@@ -68,9 +77,20 @@ async def show_products_command(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data["products"] = products
     context.user_data["product_page"] = 1
 
+    # Convert to template format
+    product_list = [
+        {
+            "name": p["name"],
+            "price": p["price"],
+            "stock_count": p.get("stock_count", 0),
+            "is_bestseller": p.get("is_bestseller", False),
+            "is_new": p.get("is_new", False)
+        }
+        for p in products
+    ]
+
     await update.message.reply_text(
-        text=format_product_list(products, 1),
-        parse_mode="MarkdownV2",
+        text=msg.product_list(product_list, 1),
         reply_markup=Keyboards.product_list(products, 1)
     )
 
@@ -91,7 +111,7 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not product:
         await safe_edit_or_send(
             query, context, user.id,
-            text="❌ Produk tidak ditemukan.",
+            text=msg.error("Produk tidak ditemukan"),
             reply_markup=Keyboards.navigation(back_target="products")
         )
         return
@@ -99,10 +119,12 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
     # Get stock count
     stock_count = await db.get_available_stock_count(product_code)
 
+    # Use msg.product_card
+    text = msg.product_card(product, stock_count)
+
     await safe_edit_or_send(
         query, context, user.id,
-        text=format_product_detail(product, stock_count),
-        parse_mode="MarkdownV2",
+        text=text,
         reply_markup=Keyboards.product_detail(
             product_code=product_code,
             has_stock=stock_count > 0,
@@ -140,7 +162,7 @@ async def initiate_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if not product:
         await safe_edit_or_send(
             query, context, user.id,
-            text="❌ Produk tidak ditemukan.",
+            text=msg.error("Produk tidak ditemukan"),
             reply_markup=Keyboards.navigation(back_target="products")
         )
         return
@@ -156,7 +178,7 @@ async def initiate_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if not success:
         await safe_edit_or_send(
             query, context, user.id,
-            text=f"❌ {message}",
+            text=msg.error(message),
             reply_markup=Keyboards.navigation(back_target="products")
         )
         return
@@ -165,8 +187,15 @@ async def initiate_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     purchase_limiter.record_purchase_start(user.id, product_code)
 
     # Calculate expiry
-    from datetime import datetime, timedelta
     expired_at = datetime.now() + timedelta(minutes=config.transaction.expiry_minutes)
+
+    # Payment pending message
+    payment_text = msg.payment_pending(
+        qris_tx.order_id,
+        product["name"],
+        product["price"],
+        expired_at
+    )
 
     # Send QRIS image if available
     if qris_tx.qris_url and qris_tx.qris_url.startswith("http"):
@@ -175,13 +204,7 @@ async def initiate_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await context.bot.send_photo(
                 chat_id=user.id,
                 photo=qris_tx.qris_url,
-                caption=format_payment_created(
-                    transaction_id=qris_tx.order_id,
-                    product_name=product["name"],
-                    amount=product["price"],
-                    expired_at=expired_at
-                ),
-                parse_mode="MarkdownV2",
+                caption=payment_text,
                 reply_markup=Keyboards.payment_pending(qris_tx.transaction_id)
             )
             return
@@ -191,13 +214,7 @@ async def initiate_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # Fallback to text
     await safe_edit_or_send(
         query, context, user.id,
-        text=format_payment_created(
-            transaction_id=qris_tx.order_id,
-            product_name=product["name"],
-            amount=product["price"],
-            expired_at=expired_at
-        ),
-        parse_mode="MarkdownV2",
+        text=payment_text,
         reply_markup=Keyboards.payment_pending(qris_tx.transaction_id)
     )
 
@@ -220,21 +237,28 @@ async def check_payment_status(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if status == "PAID":
         # Payment successful - deliver account
-        from utils.formatters import format_payment_success
-
         stock_item = tx_data.get("stock_item", {})
         product = tx_data.get("product", {})
+        tx = tx_data.get("transaction", {})
+
+        account = {
+            "email": stock_item.get("email", "-"),
+            "password": stock_item.get("password", "-"),
+            "two_fa_secret": stock_item.get("two_fa_secret"),
+            "notes": stock_item.get("notes")
+        }
+
+        text = msg.payment_success(
+            tx.get("merchant_ref", ""),
+            product.get("name", ""),
+            tx.get("amount", 0),
+            account,
+            tx_data.get("paid_at")
+        )
 
         await safe_edit_or_send(
             query, context, user.id,
-            text=format_payment_success(
-                transaction_id=tx_data["transaction"]["merchant_ref"],
-                product_name=product.get("name", ""),
-                amount=tx_data["transaction"]["amount"],
-                paid_at=tx_data.get("paid_at"),
-                stock_item=stock_item or {}
-            ),
-            parse_mode="MarkdownV2",
+            text=text,
             reply_markup=Keyboards.navigation(back_target="main")
         )
 
@@ -242,19 +266,23 @@ async def check_payment_status(update: Update, context: ContextTypes.DEFAULT_TYP
         purchase_limiter.record_purchase_complete(user.id)
 
     elif status == "EXPIRED":
-        from utils.formatters import format_payment_expired
-
         tx = tx_data if isinstance(tx_data, dict) else {}
         product = await db.get_product(tx.get("product_code", ""))
 
+        text = f"""
+{vs.header('Pembayaran Expired', tx.get('merchant_ref', ''), icon='❌')}
+
+{uf.bold('Produk:')} {product.get('name', '-') if product else '-'}
+{uf.bold('Harga:')} {uf.monospace(f"Rp {tx.get('amount', 0):,}".replace(',', '.'))}
+
+{vs.alert('Transaksi sudah kadaluarsa', 'error')}
+
+{uf.italic('Silakan buat pesanan baru.')}
+"""
+
         await safe_edit_or_send(
             query, context, user.id,
-            text=format_payment_expired(
-                transaction_id=tx.get("merchant_ref", ""),
-                product_name=product.get("name", "") if product else "",
-                amount=tx.get("amount", 0)
-            ),
-            parse_mode="MarkdownV2",
+            text=text,
             reply_markup=Keyboards.navigation(back_target="main")
         )
 
@@ -263,7 +291,7 @@ async def check_payment_status(update: Update, context: ContextTypes.DEFAULT_TYP
     elif status == "NOT_FOUND":
         await safe_edit_or_send(
             query, context, user.id,
-            text="❌ Transaksi tidak ditemukan.",
+            text=msg.error("Transaksi tidak ditemukan"),
             reply_markup=Keyboards.navigation(back_target="main")
         )
 
@@ -288,10 +316,17 @@ async def cancel_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if success:
         purchase_limiter.record_purchase_complete(user.id)
         await query.answer("✅ Transaksi dibatalkan")
+
+        text = f"""
+{vs.header('Transaksi Dibatalkan', '', icon='❌')}
+
+Transaksi telah dibatalkan.
+
+{uf.italic('Gunakan /start untuk kembali ke menu.')}
+"""
         await safe_edit_or_send(
             query, context, user.id,
-            text="❌ Transaksi telah dibatalkan.\n\n"
-            "Gunakan /start untuk kembali ke menu.",
+            text=text,
             reply_markup=Keyboards.navigation(back_target="main")
         )
     else:
@@ -304,12 +339,14 @@ async def cekbayar_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     args = context.args
 
     if not args:
-        await update.message.reply_text(
-            "💳 *Cek Status Pembayaran*\n\n"
-            "Gunakan: `/cekbayar <order_id>`\n\n"
-            "Contoh: `/cekbayar FRIENDS-1234567890-ABCD`",
-            parse_mode="MarkdownV2"
-        )
+        text = f"""
+{vs.header('Cek Status Pembayaran', '', icon='💳')}
+
+{uf.bold('Gunakan:')} /cekbayar <order_id>
+
+{uf.bold('Contoh:')} {uf.monospace('/cekbayar FRIENDS-1234-ABCD')}
+"""
+        await update.message.reply_text(text)
         return
 
     order_id = args[0]
@@ -318,15 +355,17 @@ async def cekbayar_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     status, tx_data = await payment_service.check_payment_status(order_id)
 
-    status_emoji = {
+    status_icon = {
         "PAID": "✅", "PENDING": "⏳", "EXPIRED": "❌", "NOT_FOUND": "❓"
     }
 
-    await update.message.reply_text(
-        f"{status_emoji.get(status, '❓')} *Status:* `{status}`\n"
-        f"🆔 *Order ID:* `{order_id}`",
-        parse_mode="MarkdownV2"
-    )
+    text = f"""
+{vs.header('Status Pembayaran', '', icon=status_icon.get(status, '❓'))}
+
+{uf.bold('Status:')} {status_icon.get(status, '❓')} {status}
+{uf.bold('Order ID:')} {uf.monospace(order_id)}
+"""
+    await update.message.reply_text(text)
 
 
 # Handler exports

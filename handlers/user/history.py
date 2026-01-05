@@ -3,20 +3,52 @@ Transaction history handlers for FRIENDS Store Telegram Bot.
 """
 
 from telegram import Update
-from telegram.ext import ContextTypes, CallbackQueryHandler, CommandHandler
+from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 
 from database.db import Database
 from services.payment import PaymentService
 from utils.keyboards import Keyboards
-from utils.formatters import (
-    format_transaction_list,
-    format_transaction_detail,
-    format_payment_success
-)
+from utils.message_templates import MessageTemplates as msg
 from utils.messages import safe_edit_or_send
-from utils.logger import get_logger
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
-logger = get_logger("bot")
+
+def format_tx_detail(tx: dict) -> str:
+    """Format transaction detail with Unicode fonts."""
+    status_icon = {"PAID": "✅", "UNPAID": "⏳", "EXPIRED": "❌", "REFUNDED": "💸"}.get(tx.get("status"), "❓")
+
+    return f"""
+{vs.header('Detail Transaksi', tx.get('merchant_ref', ''), icon='📋')}
+
+{uf.bold('Produk:')} {tx.get('product_name', tx.get('product_code', '-'))}
+{uf.bold('Jumlah:')} {uf.monospace(f"Rp {tx.get('amount', 0):,}".replace(',', '.'))}
+{uf.bold('Status:')} {status_icon} {tx.get('status', '-')}
+
+{uf.italic('ID: ' + tx.get('transaction_id', '-')[:20] + '...')}
+"""
+
+
+def format_tx_success(tx: dict, stock_item: dict, product_name: str) -> str:
+    """Format payment success with account details."""
+    return f"""
+{vs.header('Pembayaran Berhasil!', 'Terima kasih!', icon='✅')}
+
+{vs.card('Detail Pembelian', f'''
+{uf.bold('Produk:')} {product_name}
+{uf.bold('Harga:')} {uf.monospace(f"Rp {tx.get('amount', 0):,}".replace(',', '.'))}
+''', icon='🧾')}
+
+{vs.card('Akun Anda', f'''
+{uf.bold('Email:')} {uf.monospace(stock_item.get('email', '-'))}
+{uf.bold('Password:')} {uf.monospace(stock_item.get('password', '-'))}
+''' + (f"\\n{uf.bold('2FA:')} {uf.monospace(stock_item.get('two_fa_secret', ''))}"
+       if stock_item.get('two_fa_secret') else '')
+    + (f"\\n{uf.italic(stock_item.get('notes', ''))}"
+       if stock_item.get('notes') else ''), icon='🔑')}
+
+{vs.alert('Simpan data ini dengan aman!', 'warning')}
+"""
 
 
 async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -35,12 +67,23 @@ async def show_history(
 
     # Get user transactions
     transactions = await db.get_user_transactions(user.id, limit=10)
-    text = format_transaction_list(transactions)
+
+    # Convert to list of dicts for template
+    tx_list = [
+        {
+            "product_name": tx.get("product_name", tx.get("product_code", "Unknown")),
+            "amount": tx.get("amount", 0),
+            "status": tx.get("status", "UNKNOWN"),
+            "created_at": tx.get("created_at")
+        }
+        for tx in transactions
+    ]
+
+    text = msg.transaction_list(tx_list)
 
     if is_command:
         await update.message.reply_text(
             text=text,
-            parse_mode="MarkdownV2",
             reply_markup=Keyboards.history_filters()
         )
     else:
@@ -49,7 +92,6 @@ async def show_history(
         await safe_edit_or_send(
             query, context, user.id,
             text=text,
-            parse_mode="MarkdownV2",
             reply_markup=Keyboards.history_filters()
         )
 
@@ -77,15 +119,29 @@ async def filter_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             limit=10
         )
 
-    text = format_transaction_list(transactions)
+    # Convert to list of dicts for template
+    tx_list = [
+        {
+            "product_name": tx.get("product_name", tx.get("product_code", "Unknown")),
+            "amount": tx.get("amount", 0),
+            "status": tx.get("status", "UNKNOWN"),
+            "created_at": tx.get("created_at")
+        }
+        for tx in transactions
+    ]
 
     if not transactions:
-        text = f"📜 Tidak ada transaksi dengan status: {status_filter}"
+        text = f"""
+{vs.header('Riwayat Transaksi', f'Filter: {status_filter}', icon='📜')}
+
+{vs.empty_state('📋', 'Tidak Ada Transaksi', f'Tidak ada transaksi dengan status: {status_filter}')}
+"""
+    else:
+        text = msg.transaction_list(tx_list)
 
     await safe_edit_or_send(
         query, context, user.id,
         text=text,
-        parse_mode="MarkdownV2",
         reply_markup=Keyboards.history_filters()
     )
 
@@ -107,7 +163,7 @@ async def show_transaction_detail(update: Update, context: ContextTypes.DEFAULT_
     if not tx:
         await safe_edit_or_send(
             query, context, user.id,
-            text="❌ Transaksi tidak ditemukan.",
+            text=msg.error("Transaksi tidak ditemukan"),
             reply_markup=Keyboards.navigation(back_target="history")
         )
         return
@@ -117,12 +173,11 @@ async def show_transaction_detail(update: Update, context: ContextTypes.DEFAULT_
     if product:
         tx["product_name"] = product["name"]
 
-    text = format_transaction_detail(tx)
+    text = format_tx_detail(tx)
 
     await safe_edit_or_send(
         query, context, user.id,
         text=text,
-        parse_mode="MarkdownV2",
         reply_markup=Keyboards.transaction_actions(transaction_id, tx["status"])
     )
 
@@ -164,14 +219,7 @@ async def download_account_details(update: Update, context: ContextTypes.DEFAULT
     await query.answer()
     await safe_edit_or_send(
         query, context, user.id,
-        text=format_payment_success(
-            transaction_id=tx["merchant_ref"],
-            product_name=product.get("name", "") if product else "",
-            amount=tx["amount"],
-            paid_at=tx.get("paid_at"),
-            stock_item=stock_item
-        ),
-        parse_mode="MarkdownV2",
+        text=format_tx_success(tx, stock_item, product.get("name", "") if product else ""),
         reply_markup=Keyboards.navigation(back_target="history")
     )
 
@@ -193,12 +241,14 @@ async def request_refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer(message, show_alert=True)
 
     if success:
+        text = f"""
+{vs.header('Refund Requested', transaction_id[:20], icon='💰')}
+
+{message}
+"""
         await safe_edit_or_send(
             query, context, user.id,
-            text=f"💰 *Refund Requested*\n\n"
-            f"Order ID: `{transaction_id}`\n\n"
-            f"{message}",
-            parse_mode="MarkdownV2",
+            text=text,
             reply_markup=Keyboards.navigation(back_target="history")
         )
 
@@ -235,4 +285,3 @@ history_handlers = [
     CallbackQueryHandler(request_refund, pattern=r"^history:refund:"),
     CallbackQueryHandler(reorder, pattern=r"^history:reorder:"),
 ]
-

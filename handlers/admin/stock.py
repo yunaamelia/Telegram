@@ -2,14 +2,14 @@
 Stock management handlers for FRIENDS Store Telegram Bot.
 """
 
-from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
-
 from database.db import Database
 from services.stock_manager import StockManager
-from utils.formatters import format_stock_summary, escape_md
-from utils.validators import validate_stock_entry
+from telegram import Update
+from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
 from utils.logger import get_logger
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.validators import validate_stock_entry
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("admin")
 
@@ -33,16 +33,19 @@ async def addstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     args = context.args
 
     if not args or len(args) < 2:
-        await update.message.reply_text(
-            "📦 *Add Stock*\n\n"
-            "*Usage:*\n"
-            "`/addstock <product_code> <email:password[:2fa][:notes]>`\n\n"
-            "*Example:*\n"
-            "`/addstock github_student_fresh user@mail.com:pass123:JBSWY3DP:Valid Dec 2026`\n\n"
-            "*Bulk Upload:*\n"
-            "Upload a `.txt` file with entries (one per line) with product code as caption.",
-            parse_mode="MarkdownV2"
-        )
+        text = f"""
+{vs.header('Add Stock', 'Tambah stock produk', icon='📦')}
+
+{uf.bold('Usage:')}
+{uf.monospace('/addstock <product_code> <email:password[:2fa][:notes]>')}
+
+{uf.bold('Example:')}
+{uf.monospace('/addstock github_student_fresh user@mail.com:pass123:JBSWY3DP:Valid Dec 2026')}
+
+{uf.bold('Bulk Upload:')}
+Upload a {uf.monospace('.txt')} file with entries (one per line) with product code as caption.
+"""
+        await update.message.reply_text(text)
         return
 
     product_code = args[0].lower()
@@ -53,7 +56,7 @@ async def addstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     # Check product exists
     product = await db.get_product(product_code)
     if not product:
-        await update.message.reply_text(f"❌ Produk `{escape_md(product_code)}` tidak ditemukan\.", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"❌ Produk {uf.monospace(product_code)} tidak ditemukan.")
         return
 
     # Validate entry
@@ -70,18 +73,19 @@ async def addstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             password=data["password"],
             two_fa_secret=data.get("two_fa_secret"),
             notes=data.get("notes"),
-            added_by=update.effective_user.id
+            added_by=update.effective_user.id,
         )
 
         stock_count = await db.get_available_stock_count(product_code)
 
-        await update.message.reply_text(
-            f"✅ Stock ditambahkan\!\n\n"
-            f"📦 Produk: {escape_md(product['name'])}\n"
-            f"📧 Email: `{escape_md(data['email'][:10])}\.\.\.*`\n"
-            f"📊 Total Stock: `{stock_count}`",
-            parse_mode="MarkdownV2"
-        )
+        text = f"""
+✅ {uf.bold('Stock ditambahkan!')}
+
+📦 {uf.bold('Produk:')} {product['name']}
+📧 {uf.bold('Email:')} {uf.monospace(data['email'][:10] + '...')}
+📊 {uf.bold('Total Stock:')} {uf.monospace(str(stock_count))}
+"""
+        await update.message.reply_text(text)
         logger.info(f"Stock added: product={product_code}, email={data['email']}, by={update.effective_user.id}")
     except Exception as e:
         logger.error(f"Failed to add stock: {e}")
@@ -103,9 +107,7 @@ async def handle_stock_file(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     caption = update.message.caption or ""
     if not caption:
         await update.message.reply_text(
-            "❌ Caption harus berisi product_code\n"
-            "Contoh: `github_student_fresh`",
-            parse_mode="MarkdownV2"
+            f"❌ Caption harus berisi product_code\n" f"Contoh: {uf.monospace('github_student_fresh')}"
         )
         return
 
@@ -116,7 +118,7 @@ async def handle_stock_file(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # Check product exists
     product = await db.get_product(product_code)
     if not product:
-        await update.message.reply_text(f"❌ Produk `{escape_md(product_code)}` tidak ditemukan\.", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"❌ Produk {uf.monospace(product_code)} tidak ditemukan.")
         return
 
     # Download file
@@ -130,23 +132,22 @@ async def handle_stock_file(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # Add stock bulk
     stock_manager = StockManager(db)
     success, errors, error_msgs = await stock_manager.add_stock_bulk(
-        product_code=product_code,
-        entries=lines,
-        added_by=update.effective_user.id
+        product_code=product_code, entries=lines, added_by=update.effective_user.id
     )
 
-    result_text = (
-        f"📦 *Bulk Stock Upload Complete*\n\n"
-        f"📊 Produk: {escape_md(product['name'])}\n"
-        f"✅ Berhasil: `{success}`\n"
-        f"❌ Gagal: `{errors}`\n"
-    )
-    logger.info(f"Bulk stock upload: product={product_code}, success={success}, errors={errors}, by={update.effective_user.id}")
+    result_text = f"""
+{vs.header('Bulk Stock Upload Complete', '', icon='📦')}
+
+📊 {uf.bold('Produk:')} {product['name']}
+✅ {uf.bold('Berhasil:')} {uf.monospace(str(success))}
+❌ {uf.bold('Gagal:')} {uf.monospace(str(errors))}
+"""
+    logger.info(f"Bulk stock upload: product={product_code}, success={success}, errors={errors}")
 
     if error_msgs and len(error_msgs) <= 5:
-        result_text += "\n*Errors:*\n" + "\n".join(error_msgs[:5])
+        result_text += f"\n{uf.bold('Errors:')}\n" + "\n".join(error_msgs[:5])
 
-    await update.message.reply_text(result_text, parse_mode="MarkdownV2")
+    await update.message.reply_text(result_text)
 
 
 async def checkstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -163,9 +164,16 @@ async def checkstock_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text("📦 Tidak ada produk.")
         return
 
-    text = format_stock_summary(stock_summary)
+    lines = [f"{vs.header('Stock Summary', f'{len(stock_summary)} produk', icon='📦')}"]
 
-    await update.message.reply_text(text, parse_mode="MarkdownV2")
+    for item in stock_summary:
+        indicator = "🟢" if item.get("available", 0) > 5 else "🟡" if item.get("available", 0) > 0 else "🔴"
+        lines.append(
+            f"{indicator} {uf.bold(item.get('name', item.get('product_code', '-'))[:20])}: "
+            f"{uf.monospace(str(item.get('available', 0)))} / {item.get('total', 0)}"
+        )
+
+    await update.message.reply_text("\n".join(lines))
 
 
 async def stockdetails_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -176,7 +184,7 @@ async def stockdetails_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/stockdetails <product_code>`", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"{uf.bold('Usage:')} /stockdetails <product_code>")
         return
 
     product_code = args[0].lower()
@@ -185,21 +193,24 @@ async def stockdetails_command(update: Update, context: ContextTypes.DEFAULT_TYP
     stock_items = await db.get_available_stock(product_code)
 
     if not stock_items:
-        await update.message.reply_text(f"📦 Tidak ada stock tersedia untuk `{product_code}`")
+        await update.message.reply_text(f"📦 Tidak ada stock tersedia untuk {uf.monospace(product_code)}")
         return
 
-    lines = [f"📦 *Stock Details: {escape_md(product_code)}*\n", f"Total: `{len(stock_items)}` items\n"]
+    lines = [
+        f"{vs.header('Stock Details', product_code, icon='📦')}",
+        f"Total: {uf.monospace(str(len(stock_items)))} items\n",
+    ]
 
     for i, item in enumerate(stock_items[:20], 1):
         email = item["email"]
         if len(email) > 20:
             email = email[:17] + "..."
-        lines.append(f"{i}. `{email}`")
+        lines.append(f"{i}. {uf.monospace(email)}")
 
     if len(stock_items) > 20:
-        lines.append(f"\n_...dan {len(stock_items) - 20} lainnya_")
+        lines.append(f"\n{uf.italic(f'...dan {len(stock_items) - 20} lainnya')}")
 
-    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+    await update.message.reply_text("\n".join(lines))
 
 
 # Handler exports
@@ -207,8 +218,5 @@ stock_handlers = [
     CommandHandler("addstock", addstock_command),
     CommandHandler("checkstock", checkstock_command),
     CommandHandler("stockdetails", stockdetails_command),
-    MessageHandler(
-        filters.Document.TXT & filters.Caption(r".*"),
-        handle_stock_file
-    ),
+    MessageHandler(filters.Document.TXT & filters.Caption(r".*"), handle_stock_file),
 ]
