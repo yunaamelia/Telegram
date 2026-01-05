@@ -2,26 +2,28 @@
 Reply keyboard builders for FRIENDS Store Telegram Bot.
 """
 
-from telegram import ReplyKeyboardMarkup, KeyboardButton
-from typing import List
+from telegram import KeyboardButton, ReplyKeyboardMarkup
+
+from utils.unicode_fonts import UnicodeFonts as uf
 
 
 class UserReplyKeyboard:
     """User reply keyboard - 2x3 layout (6 buttons)."""
 
+    # Styled button text with Unicode fonts
     BUTTONS = [
-        ["🛒 Beli Produk", "📜 Riwayat", "❓ Bantuan"],
-        ["💳 Cek Bayar", "🔄 Refund", "🏠 Menu"]
+        [f"🛒 {uf.sans('Beli')}", f"📜 {uf.sans('Riwayat')}", f"❓ {uf.sans('Bantuan')}"],
+        [f"💳 {uf.sans('Cek Bayar')}", f"🔄 {uf.sans('Refund')}", f"🏠 {uf.sans('Menu')}"]
     ]
 
     # Mapping button text to command/action
     HANDLERS = {
-        "🛒 Beli Produk": "show_products",
-        "📜 Riwayat": "show_history",
-        "❓ Bantuan": "show_help",
-        "💳 Cek Bayar": "check_payment",
-        "🔄 Refund": "request_refund",
-        "🏠 Menu": "show_main_menu"
+        f"🛒 {uf.sans('Beli')}": "show_products",
+        f"📜 {uf.sans('Riwayat')}": "show_history",
+        f"❓ {uf.sans('Bantuan')}": "show_help",
+        f"💳 {uf.sans('Cek Bayar')}": "check_payment",
+        f"🔄 {uf.sans('Refund')}": "request_refund",
+        f"🏠 {uf.sans('Menu')}": "show_main_menu"
     }
 
     @staticmethod

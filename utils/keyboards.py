@@ -3,9 +3,12 @@ Inline keyboard layouts for FRIENDS Store Telegram Bot.
 3-column fixed layout with pagination support.
 """
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from typing import List, Dict, Optional
 import math
+from typing import Dict, List, Optional
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+from utils.unicode_fonts import UnicodeFonts as uf
 
 
 class Keyboards:
@@ -33,9 +36,9 @@ class Keyboards:
         """Main menu keyboard - 3 columns."""
         keyboard = [
             [
-                InlineKeyboardButton("🛒 Beli", callback_data="nav:products"),
-                InlineKeyboardButton("📜 Riwayat", callback_data="nav:history"),
-                InlineKeyboardButton("❓ Bantuan", callback_data="nav:help")
+                InlineKeyboardButton(f"🛒 {uf.sans('Beli')}", callback_data="nav:products"),
+                InlineKeyboardButton(f"📜 {uf.sans('Riwayat')}", callback_data="nav:history"),
+                InlineKeyboardButton(f"❓ {uf.sans('Bantuan')}", callback_data="nav:help")
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
@@ -53,26 +56,26 @@ class Keyboards:
         # Left button: Prev or Back
         if page and page > 1:
             buttons.append(
-                InlineKeyboardButton("◀️ Prev", callback_data=f"{prefix}:page:{page - 1}")
+                InlineKeyboardButton(f"◀️ {uf.sans('Prev')}", callback_data=f"{prefix}:page:{page - 1}")
             )
         else:
             buttons.append(
-                InlineKeyboardButton("🔙 Back", callback_data=f"nav:{back_target}")
+                InlineKeyboardButton(f"🔙 {uf.sans('Back')}", callback_data=f"nav:{back_target}")
             )
 
         # Center: Home
         buttons.append(
-            InlineKeyboardButton("🏠 Home", callback_data="nav:main")
+            InlineKeyboardButton(f"🏠 {uf.sans('Home')}", callback_data="nav:main")
         )
 
         # Right button: Next or Help
         if page and total_pages and page < total_pages:
             buttons.append(
-                InlineKeyboardButton("Next ▶️", callback_data=f"{prefix}:page:{page + 1}")
+                InlineKeyboardButton(f"{uf.sans('Next')} ▶️", callback_data=f"{prefix}:page:{page + 1}")
             )
         else:
             buttons.append(
-                InlineKeyboardButton("❓ Help", callback_data="nav:help")
+                InlineKeyboardButton(f"❓ {uf.sans('Help')}", callback_data="nav:help")
             )
 
         return buttons
@@ -146,19 +149,19 @@ class Keyboards:
             price_formatted = f"{price:,}".replace(',', '.')
             keyboard.append([
                 InlineKeyboardButton(
-                    f"💳 Bayar Sekarang (Rp {price_formatted})",
+                    f"💳 {uf.sans('Bayar Sekarang')} (Rp {price_formatted})",
                     callback_data=f"buy:{product_code}"
                 )
             ])
         else:
             keyboard.append([
-                InlineKeyboardButton("❌ Stok Habis", callback_data="noop")
+                InlineKeyboardButton(f"❌ {uf.sans('Stok Habis')}", callback_data="noop")
             ])
 
         keyboard.append([
-            InlineKeyboardButton("🔙 Back", callback_data="nav:products"),
-            InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
-            InlineKeyboardButton("❓ Help", callback_data="nav:help")
+            InlineKeyboardButton(f"🔙 {uf.sans('Back')}", callback_data="nav:products"),
+            InlineKeyboardButton(f"🏠 {uf.sans('Home')}", callback_data="nav:main"),
+            InlineKeyboardButton(f"❓ {uf.sans('Help')}", callback_data="nav:help")
         ])
 
         return InlineKeyboardMarkup(keyboard)
@@ -178,13 +181,13 @@ class Keyboards:
 
         if checkout_url:
             keyboard.append([
-                InlineKeyboardButton("🔗 Buka Link", url=checkout_url)
+                InlineKeyboardButton(f"🔗 {uf.sans('Buka Link')}", url=checkout_url)
             ])
 
         keyboard.append([
-            InlineKeyboardButton("✅ Sudah Bayar", callback_data=f"pay:check:{transaction_id}"),
-            InlineKeyboardButton("❌ Batal", callback_data=f"pay:cancel:{transaction_id}"),
-            InlineKeyboardButton("ℹ️ Info", callback_data="help:payment")
+            InlineKeyboardButton(f"✅ {uf.sans('Sudah Bayar')}", callback_data=f"pay:check:{transaction_id}"),
+            InlineKeyboardButton(f"❌ {uf.sans('Batal')}", callback_data=f"pay:cancel:{transaction_id}"),
+            InlineKeyboardButton(f"ℹ️ {uf.sans('Info')}", callback_data="help:payment")
         ])
 
         return InlineKeyboardMarkup(keyboard)
@@ -250,14 +253,14 @@ class Keyboards:
         """
         keyboard = [
             [
-                InlineKeyboardButton("📋 Semua", callback_data="history:filter:all"),
-                InlineKeyboardButton("✅ Paid", callback_data="history:filter:PAID"),
-                InlineKeyboardButton("⏳ Pending", callback_data="history:filter:UNPAID")
+                InlineKeyboardButton(f"📋 {uf.sans('Semua')}", callback_data="history:filter:all"),
+                InlineKeyboardButton(f"✅ {uf.sans('Paid')}", callback_data="history:filter:PAID"),
+                InlineKeyboardButton(f"⏳ {uf.sans('Pending')}", callback_data="history:filter:UNPAID")
             ],
             [
-                InlineKeyboardButton("🔙 Back", callback_data="nav:main"),
-                InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
-                InlineKeyboardButton("❓ Help", callback_data="nav:help")
+                InlineKeyboardButton(f"🔙 {uf.sans('Back')}", callback_data="nav:main"),
+                InlineKeyboardButton(f"🏠 {uf.sans('Home')}", callback_data="nav:main"),
+                InlineKeyboardButton(f"❓ {uf.sans('Help')}", callback_data="nav:help")
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
@@ -272,25 +275,25 @@ class Keyboards:
 
         if status == "PAID":
             keyboard.append([
-                InlineKeyboardButton("📥 Download", callback_data=f"history:download:{transaction_id}"),
-                InlineKeyboardButton("🔄 Refund", callback_data=f"history:refund:{transaction_id}"),
-                InlineKeyboardButton("📋 Detail", callback_data="noop")
+                InlineKeyboardButton(f"📥 {uf.sans('Download')}", callback_data=f"history:download:{transaction_id}"),
+                InlineKeyboardButton(f"🔄 {uf.sans('Refund')}", callback_data=f"history:refund:{transaction_id}"),
+                InlineKeyboardButton(f"📋 {uf.sans('Detail')}", callback_data="noop")
             ])
         elif status == "UNPAID":
             keyboard.append([
-                InlineKeyboardButton("💳 Bayar", callback_data=f"pay:view:{transaction_id}"),
-                InlineKeyboardButton("❌ Batal", callback_data=f"pay:cancel:{transaction_id}"),
-                InlineKeyboardButton("📋 Detail", callback_data="noop")
+                InlineKeyboardButton(f"💳 {uf.sans('Bayar')}", callback_data=f"pay:view:{transaction_id}"),
+                InlineKeyboardButton(f"❌ {uf.sans('Batal')}", callback_data=f"pay:cancel:{transaction_id}"),
+                InlineKeyboardButton(f"📋 {uf.sans('Detail')}", callback_data="noop")
             ])
         elif status == "EXPIRED":
             keyboard.append([
-                InlineKeyboardButton("🔄 Order Ulang", callback_data=f"history:reorder:{transaction_id}")
+                InlineKeyboardButton(f"🔄 {uf.sans('Order Ulang')}", callback_data=f"history:reorder:{transaction_id}")
             ])
 
         keyboard.append([
-            InlineKeyboardButton("🔙 Back", callback_data="nav:history"),
-            InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
-            InlineKeyboardButton("❓ Help", callback_data="nav:help")
+            InlineKeyboardButton(f"🔙 {uf.sans('Back')}", callback_data="nav:history"),
+            InlineKeyboardButton(f"🏠 {uf.sans('Home')}", callback_data="nav:main"),
+            InlineKeyboardButton(f"❓ {uf.sans('Help')}", callback_data="nav:help")
         ])
 
         return InlineKeyboardMarkup(keyboard)
@@ -306,14 +309,14 @@ class Keyboards:
         """
         keyboard = [
             [
-                InlineKeyboardButton("📖 Order", callback_data="help:order"),
-                InlineKeyboardButton("💳 Bayar", callback_data="help:payment"),
-                InlineKeyboardButton("❓ FAQ", callback_data="help:faq")
+                InlineKeyboardButton(f"📖 {uf.sans('Order')}", callback_data="help:order"),
+                InlineKeyboardButton(f"💳 {uf.sans('Bayar')}", callback_data="help:payment"),
+                InlineKeyboardButton(f"❓ {uf.sans('FAQ')}", callback_data="help:faq")
             ],
             [
-                InlineKeyboardButton("📞 Contact", callback_data="help:contact"),
-                InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
-                InlineKeyboardButton("🔙 Back", callback_data="nav:main")
+                InlineKeyboardButton(f"📞 {uf.sans('Contact')}", callback_data="help:contact"),
+                InlineKeyboardButton(f"🏠 {uf.sans('Home')}", callback_data="nav:main"),
+                InlineKeyboardButton(f"🔙 {uf.sans('Back')}", callback_data="nav:main")
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
@@ -322,9 +325,9 @@ class Keyboards:
     def help_back() -> InlineKeyboardMarkup:
         """Back navigation for help pages - 3 columns."""
         keyboard = [[
-            InlineKeyboardButton("🔙 Back", callback_data="nav:help"),
-            InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
-            InlineKeyboardButton("❓ More", callback_data="nav:help")
+            InlineKeyboardButton(f"🔙 {uf.sans('Back')}", callback_data="nav:help"),
+            InlineKeyboardButton(f"🏠 {uf.sans('Home')}", callback_data="nav:main"),
+            InlineKeyboardButton(f"❓ {uf.sans('More')}", callback_data="nav:help")
         ]]
         return InlineKeyboardMarkup(keyboard)
 
@@ -332,9 +335,9 @@ class Keyboards:
     def confirm_cancel(action: str, item_id: str) -> InlineKeyboardMarkup:
         """Confirmation dialog - 3 columns."""
         keyboard = [[
-            InlineKeyboardButton("✅ Ya", callback_data=f"confirm:{action}:{item_id}"),
-            InlineKeyboardButton("❌ Tidak", callback_data=f"cancel:{action}:{item_id}"),
-            InlineKeyboardButton("ℹ️ Info", callback_data="noop")
+            InlineKeyboardButton(f"✅ {uf.sans('Ya')}", callback_data=f"confirm:{action}:{item_id}"),
+            InlineKeyboardButton(f"❌ {uf.sans('Tidak')}", callback_data=f"cancel:{action}:{item_id}"),
+            InlineKeyboardButton(f"ℹ️ {uf.sans('Info')}", callback_data="noop")
         ]]
         return InlineKeyboardMarkup(keyboard)
 
@@ -342,11 +345,11 @@ class Keyboards:
     def navigation(show_back: bool = True, back_target: str = "main") -> InlineKeyboardMarkup:
         """Simple navigation - 3 columns."""
         buttons = [
-            InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
-            InlineKeyboardButton("❓ Help", callback_data="nav:help")
+            InlineKeyboardButton(f"🏠 {uf.sans('Home')}", callback_data="nav:main"),
+            InlineKeyboardButton(f"❓ {uf.sans('Help')}", callback_data="nav:help")
         ]
         if show_back:
             buttons.append(
-                InlineKeyboardButton("🔙 Back", callback_data=f"nav:{back_target}")
+                InlineKeyboardButton(f"🔙 {uf.sans('Back')}", callback_data=f"nav:{back_target}")
             )
         return InlineKeyboardMarkup([buttons])

@@ -3,9 +3,12 @@ Admin-specific keyboard builders.
 All keyboards use 3-column layout for consistency.
 """
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
-from typing import List, Dict
 import math
+from typing import Dict, List
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+
+from utils.unicode_fonts import UnicodeFonts as uf
 
 
 class AdminKeyboards:
@@ -29,32 +32,32 @@ class AdminKeyboards:
         if expanded:
             # Expanded view - show all quick actions
             keyboard.append([
-                InlineKeyboardButton("⭐ Quick Actions ▲", callback_data="admin:quick:collapse")
+                InlineKeyboardButton(f"⭐ {uf.sans('Quick Actions')} ▲", callback_data="admin:quick:collapse")
             ])
             keyboard.append([
-                InlineKeyboardButton("📦 Add Stock", callback_data="admin:quick:addstock"),
-                InlineKeyboardButton("📊 Stats", callback_data="admin:quick:stats"),
-                InlineKeyboardButton("💰 Trans", callback_data="admin:quick:trans")
+                InlineKeyboardButton(f"📦 {uf.sans('Add Stock')}", callback_data="admin:quick:addstock"),
+                InlineKeyboardButton(f"📊 {uf.sans('Stats')}", callback_data="admin:quick:stats"),
+                InlineKeyboardButton(f"💰 {uf.sans('Trans')}", callback_data="admin:quick:trans")
             ])
             keyboard.append([
-                InlineKeyboardButton("🔧 Logs", callback_data="admin:quick:logs"),
-                InlineKeyboardButton("💾 Backup", callback_data="admin:quick:backup"),
-                InlineKeyboardButton("📢 BC", callback_data="admin:quick:broadcast")
+                InlineKeyboardButton(f"🔧 {uf.sans('Logs')}", callback_data="admin:quick:logs"),
+                InlineKeyboardButton(f"💾 {uf.sans('Backup')}", callback_data="admin:quick:backup"),
+                InlineKeyboardButton(f"📢 {uf.sans('BC')}", callback_data="admin:quick:broadcast")
             ])
             keyboard.append([
-                InlineKeyboardButton("➕ Add Product", callback_data="admin:product:add"),
-                InlineKeyboardButton("📋 Products", callback_data="admin:menu:products"),
-                InlineKeyboardButton("👥 Users", callback_data="admin:menu:users")
+                InlineKeyboardButton(f"➕ {uf.sans('Add Product')}", callback_data="admin:product:add"),
+                InlineKeyboardButton(f"📋 {uf.sans('Products')}", callback_data="admin:menu:products"),
+                InlineKeyboardButton(f"👥 {uf.sans('Users')}", callback_data="admin:menu:users")
             ])
         else:
             # Collapsed view - minimal quick actions
             keyboard.append([
-                InlineKeyboardButton("⭐ Quick Actions ▼", callback_data="admin:quick:expand")
+                InlineKeyboardButton(f"⭐ {uf.sans('Quick Actions')} ▼", callback_data="admin:quick:expand")
             ])
             keyboard.append([
-                InlineKeyboardButton("📦 +Stock", callback_data="admin:quick:addstock"),
-                InlineKeyboardButton("📊 Stats", callback_data="admin:quick:stats"),
-                InlineKeyboardButton("💰 Trans", callback_data="admin:quick:trans")
+                InlineKeyboardButton(f"📦 {uf.sans('+Stock')}", callback_data="admin:quick:addstock"),
+                InlineKeyboardButton(f"📊 {uf.sans('Stats')}", callback_data="admin:quick:stats"),
+                InlineKeyboardButton(f"💰 {uf.sans('Trans')}", callback_data="admin:quick:trans")
             ])
 
         # Divider
@@ -62,22 +65,27 @@ class AdminKeyboards:
 
         # Full Menu Header - Clickable
         keyboard.append([
-            InlineKeyboardButton("📂 Full Menu ▶", callback_data="admin:fullmenu:toggle")
+            InlineKeyboardButton(f"📂 {uf.sans('Full Menu')} ▶", callback_data="admin:fullmenu:toggle")
         ])
 
         # Category buttons
-        keyboard.append([InlineKeyboardButton("📦 Stock Management", callback_data="admin:menu:stock")])
-        keyboard.append([InlineKeyboardButton("🛍️ Product Management", callback_data="admin:menu:products")])
-        keyboard.append([InlineKeyboardButton("💰 Transactions", callback_data="admin:menu:transactions")])
-        keyboard.append([InlineKeyboardButton("👥 User Management", callback_data="admin:menu:users")])
-        keyboard.append([InlineKeyboardButton("📊 Reports & Analytics", callback_data="admin:menu:reports")])
-        keyboard.append([InlineKeyboardButton("⚙️ System & Settings", callback_data="admin:menu:system")])
-
+        keyboard.append([InlineKeyboardButton(
+            f"📦 {uf.sans('Stock Management')}", callback_data="admin:menu:stock")])
+        keyboard.append([InlineKeyboardButton(
+            f"🛍️ {uf.sans('Product Management')}", callback_data="admin:menu:products")])
+        keyboard.append([InlineKeyboardButton(
+            f"💰 {uf.sans('Transactions')}", callback_data="admin:menu:transactions")])
+        keyboard.append([InlineKeyboardButton(
+            f"👥 {uf.sans('User Management')}", callback_data="admin:menu:users")])
+        keyboard.append([InlineKeyboardButton(
+            f"📊 {uf.sans('Reports & Analytics')}", callback_data="admin:menu:reports")])
+        keyboard.append([InlineKeyboardButton(
+            f"⚙️ {uf.sans('System & Settings')}", callback_data="admin:menu:system")])
         # Bottom navigation
         keyboard.append([
-            InlineKeyboardButton("🏠 Home", callback_data="nav:main"),
-            InlineKeyboardButton("❓ Help", callback_data="admin:help"),
-            InlineKeyboardButton("🔄 Refresh", callback_data="admin:dashboard")
+            InlineKeyboardButton(f"🏠 {uf.sans('Home')}", callback_data="nav:main"),
+            InlineKeyboardButton(f"❓ {uf.sans('Help')}", callback_data="admin:help"),
+            InlineKeyboardButton(f"🔄 {uf.sans('Refresh')}", callback_data="admin:dashboard")
         ])
 
         return InlineKeyboardMarkup(keyboard)
@@ -526,14 +534,14 @@ class AdminKeyboards:
         """
         keyboard = [
             [
-                KeyboardButton("📦 +Stock"),
-                KeyboardButton("📊 Stats"),
-                KeyboardButton("🔧 Logs")
+                KeyboardButton(f"📦 {uf.sans('+Stock')}"),
+                KeyboardButton(f"📊 {uf.sans('Stats')}"),
+                KeyboardButton(f"🔧 {uf.sans('Logs')}")
             ],
             [
-                KeyboardButton("💰 Trans"),
-                KeyboardButton("📢 BC"),
-                KeyboardButton("🏠 Menu")
+                KeyboardButton(f"💰 {uf.sans('Trans')}"),
+                KeyboardButton(f"📢 {uf.sans('BC')}"),
+                KeyboardButton(f"🏠 {uf.sans('Menu')}")
             ]
         ]
         return ReplyKeyboardMarkup(
