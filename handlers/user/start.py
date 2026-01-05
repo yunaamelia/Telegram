@@ -175,8 +175,7 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     await update.message.reply_text(
         "❌ Operasi dibatalkan.\n\n"
-        "Gunakan /start untuk kembali ke menu utama.",
-        parse_mode="MarkdownV2"
+        "Gunakan /start untuk kembali ke menu utama."
     )
 
 

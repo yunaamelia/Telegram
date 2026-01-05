@@ -5,10 +5,11 @@ Reply keyboard message handler for FRIENDS Store Telegram Bot.
 from telegram import Update
 from telegram.ext import ContextTypes, MessageHandler, filters
 
-from utils.reply_keyboards import UserReplyKeyboard
-from utils.messages import safe_edit_or_send
 from database.db import Database
 from utils.logger import get_logger
+from utils.reply_keyboards import UserReplyKeyboard
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("bot")
 
@@ -48,9 +49,8 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
 
         elif action == "check_payment":
             await update.message.reply_text(
-                "💳 Untuk cek status pembayaran, gunakan:\n"
-                "`/cekbayar order_id`",
-                parse_mode="MarkdownV2"
+                f"💳 Untuk cek status pembayaran, gunakan:\n"
+                f"{uf.monospace('/cekbayar order_id')}"
             )
 
         elif action == "request_refund":
@@ -73,7 +73,7 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
             "🔧 Logs": "logs",
             "💰 Trans": "transactions",
             "📢 BC": "broadcast",
-            "🏠 Menu": "start" # Handled above, but kept for completeness in mapping thought
+            "🏠 Menu": "start"  # Handled above, but kept for completeness
         }
 
         if text in admin_actions:
@@ -83,48 +83,47 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
             from utils.admin_keyboards import AdminKeyboards
 
             if action == "addstock":
-                 # Trigger Add Stock Wizard
-                 from handlers.admin.wizards.stock_wizard import StockWizard
-                 await StockWizard.start(update, context)
-                 return
+                # Trigger Add Stock Wizard
+                from handlers.admin.wizards.stock_wizard import StockWizard
+                await StockWizard.start(update, context)
+                return
 
             if action == "stats":
-                # Show stats using system menu logic or direct message
-                from handlers.admin.ui.system_ui import show_statistics
-                # show_statistics expects query, so we mimic message behavior
-                # or just direct to system menu
+                text_msg = f"{vs.header('Statistics', '', icon='📊')}"
+                text_msg += f"\n{uf.italic('Use inline menu for details:')}"
                 await update.message.reply_text(
-                     "*📊 Statistics*\n━━━━━━━━━━━━━━━━━━━━\n\n_Use inline menu for details:_",
-                     parse_mode="MarkdownV2",
-                     reply_markup=AdminKeyboards.system_menu()
+                    text_msg,
+                    reply_markup=AdminKeyboards.system_menu()
                 )
                 return
 
             if action == "logs":
-                 await update.message.reply_text(
-                    "*🔧 System Logs*\n━━━━━━━━━━━━━━━━━━━━\n\n"
-                    "_Use `/logs` command to view logs\\._\n"
-                    "_Use `/logs error` for error logs\\._",
-                    parse_mode="MarkdownV2",
+                text_msg = f"{vs.header('System Logs', '', icon='🔧')}"
+                text_msg += f"\n{uf.italic('Use')} {uf.monospace('/logs')} {uf.italic('command to view logs.')}"
+                text_msg += f"\n{uf.italic('Use')} {uf.monospace('/logs error')} {uf.italic('for error logs.')}"
+                await update.message.reply_text(
+                    text_msg,
                     reply_markup=AdminKeyboards.system_menu()
-                 )
-                 return
+                )
+                return
 
             if action == "transactions":
+                text_msg = f"{vs.header('Transactions', '', icon='💰')}"
+                text_msg += f"\n{uf.italic('Select action:')}"
                 await update.message.reply_text(
-                    "*💰 Transactions*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_",
-                    parse_mode="MarkdownV2",
+                    text_msg,
                     reply_markup=AdminKeyboards.transaction_management_menu()
                 )
                 return
 
             if action == "broadcast":
-                 await update.message.reply_text(
-                    "*📢 Broadcast Message*\n━━━━━━━━━━━━━━━━━━━━\n\n_Select target:_",
-                    parse_mode="MarkdownV2",
+                text_msg = f"{vs.header('Broadcast Message', '', icon='📢')}"
+                text_msg += f"\n{uf.italic('Select target:')}"
+                await update.message.reply_text(
+                    text_msg,
                     reply_markup=AdminKeyboards.broadcast_targets()
-                 )
-                 return
+                )
+                return
 
             return
 
