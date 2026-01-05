@@ -3,13 +3,13 @@ Admin management handlers for FRIENDS Store Telegram Bot.
 Super admin only commands.
 """
 
-from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler
-
 from config import config
 from database.db import Database
-from utils.formatters import escape_md
+from telegram import Update
+from telegram.ext import CommandHandler, ContextTypes
 from utils.logger import get_logger
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("admin")
 
@@ -29,12 +29,14 @@ async def addadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     args = context.args
     if not args:
-        await update.message.reply_text(
-            "👤 *Add Admin*\n\n"
-            "Usage: `/addadmin <user_id>`\n\n"
-            "User harus sudah memulai bot untuk bisa dijadikan admin.",
-            parse_mode="MarkdownV2"
-        )
+        text = f"""
+{vs.header('Add Admin', '', icon='👤')}
+
+{uf.bold('Usage:')} {uf.monospace('/addadmin <user_id>')}
+
+{uf.italic('User harus sudah memulai bot untuk bisa dijadikan admin.')}
+"""
+        await update.message.reply_text(text)
         return
 
     try:
@@ -48,33 +50,25 @@ async def addadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     # Check if user exists
     user = await db.get_user(user_id)
     if not user:
-        await update.message.reply_text(
-            "❌ User tidak ditemukan.\n"
-            "User harus memulai bot terlebih dahulu."
-        )
+        await update.message.reply_text("❌ User tidak ditemukan.\n" "User harus memulai bot terlebih dahulu.")
         return
 
     # Check if already admin
     existing = await db.get_admin(user_id)
     if existing:
-        await update.message.reply_text(
-            f"ℹ️ User {user_id} sudah menjadi admin ({existing['role']})."
-        )
+        await update.message.reply_text(f"ℹ️ User {user_id} sudah menjadi admin ({existing['role']}).")
         return
 
     # Add admin
-    await db.add_admin(
-        user_id=user_id,
-        role="admin",
-        added_by=update.effective_user.id
-    )
+    await db.add_admin(user_id=user_id, role="admin", added_by=update.effective_user.id)
     logger.info(f"Admin added: user_id={user_id}, by={update.effective_user.id}")
 
-    await update.message.reply_text(
-        f"✅ User `{user_id}` \(@{escape_md(user.get('username', 'N/A'))}\) "
-        f"ditambahkan sebagai admin\.",
-        parse_mode="MarkdownV2"
-    )
+    text = f"""
+✅ {uf.bold('Admin ditambahkan!')}
+
+👤 {uf.bold('User:')} {uf.monospace(str(user_id))} (@{user.get('username', 'N/A')})
+"""
+    await update.message.reply_text(text)
 
 
 async def removeadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -85,7 +79,7 @@ async def removeadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/removeadmin <user_id>`", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"{uf.bold('Usage:')} /removeadmin <user_id>")
         return
 
     try:
@@ -103,9 +97,9 @@ async def removeadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     success = await db.remove_admin(user_id)
     if success:
         logger.info(f"Admin removed: user_id={user_id}, by={update.effective_user.id}")
-        await update.message.reply_text(f"✅ Admin `{user_id}` dihapus\.", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"✅ Admin {uf.monospace(str(user_id))} dihapus.")
     else:
-        await update.message.reply_text("❌ Gagal menghapus admin atau tidak ditemukan\.")
+        await update.message.reply_text("❌ Gagal menghapus admin atau tidak ditemukan.")
 
 
 async def listadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -123,7 +117,7 @@ async def listadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.message.reply_text("👤 Tidak ada admin terdaftar.")
         return
 
-    lines = ["👥 *Daftar Admin*\n"]
+    lines = [f"{vs.header('Daftar Admin', '', icon='👥')}"]
 
     for admin in admins:
         role_emoji = "👑" if admin["role"] == "super_admin" else "👤"
@@ -131,11 +125,10 @@ async def listadmin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         username = user_info.get("username", "N/A") if user_info else "N/A"
 
         lines.append(
-            f"{role_emoji} `{admin['user_id']}` @{escape_md(username)}\n"
-            f"   Role: {escape_md(admin['role'])}\n"
+            f"{role_emoji} {uf.monospace(str(admin['user_id']))} @{username}\n" f"   {uf.bold('Role:')} {admin['role']}"
         )
 
-    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+    await update.message.reply_text("\n".join(lines))
 
 
 # Handler exports

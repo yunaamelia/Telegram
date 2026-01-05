@@ -2,12 +2,12 @@
 Security handlers for FRIENDS Store Telegram Bot.
 """
 
-from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler
-
 from database.db import Database
-from utils.formatters import escape_md
+from telegram import Update
+from telegram.ext import CommandHandler, ContextTypes
 from utils.logger import get_logger
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("admin")
 
@@ -27,11 +27,12 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     args = context.args
     if len(args) < 2:
-        await update.message.reply_text(
-            "🚫 *Ban User*\n\n"
-            "Usage: `/ban <user_id> <reason>`",
-            parse_mode="MarkdownV2"
-        )
+        text = f"""
+{vs.header('Ban User', '', icon='🚫')}
+
+{uf.bold('Usage:')} {uf.monospace('/ban <user_id> <reason>')}
+"""
+        await update.message.reply_text(text)
         return
 
     try:
@@ -62,16 +63,16 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     # Log security event
     await db.log_security_event(
-        action="USER_BANNED",
-        user_id=user_id,
-        details=f"Banned by {update.effective_user.id}. Reason: {reason}"
+        action="USER_BANNED", user_id=user_id, details=f"Banned by {update.effective_user.id}. Reason: {reason}"
     )
 
-    await update.message.reply_text(
-        f"🚫 User `{user_id}` \(@{escape_md(user.get('username', 'N/A'))}\) diblokir\.\n"
-        f"Alasan: {escape_md(reason)}",
-        parse_mode="MarkdownV2"
-    )
+    text = f"""
+🚫 {uf.bold('User diblokir!')}
+
+👤 {uf.bold('User:')} {uf.monospace(str(user_id))} (@{user.get('username', 'N/A')})
+📝 {uf.bold('Alasan:')} {reason}
+"""
+    await update.message.reply_text(text)
 
 
 async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -82,7 +83,7 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/unban <user_id>`", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"{uf.bold('Usage:')} /unban <user_id>")
         return
 
     try:
@@ -104,12 +105,10 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     # Log security event
     await db.log_security_event(
-        action="USER_UNBANNED",
-        user_id=user_id,
-        details=f"Unbanned by {update.effective_user.id}"
+        action="USER_UNBANNED", user_id=user_id, details=f"Unbanned by {update.effective_user.id}"
     )
 
-    await update.message.reply_text(f"✅ User `{user_id}` berhasil di\-unban\.", parse_mode="MarkdownV2")
+    await update.message.reply_text(f"✅ User {uf.monospace(str(user_id))} berhasil di-unban.")
 
 
 async def banlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -126,15 +125,15 @@ async def banlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("🚫 Tidak ada user yang diblokir.")
         return
 
-    lines = ["🚫 *Banned Users*\n"]
+    lines = [f"{vs.header('Banned Users', '', icon='🚫')}"]
 
     for user in banned_users:
         lines.append(
-            f"• `{user['user_id']}` @{escape_md(user.get('username', 'N/A'))}\n"
-            f"  Reason: {escape_md(user.get('ban_reason', 'N/A'))}\n"
+            f"• {uf.monospace(str(user['user_id']))} @{user.get('username', 'N/A')}\n"
+            f"  {uf.bold('Reason:')} {user.get('ban_reason', 'N/A')}"
         )
 
-    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+    await update.message.reply_text("\n".join(lines))
 
 
 async def security_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -150,21 +149,21 @@ async def security_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     banned = await db.get_banned_users()
 
     lines = [
-        "🔒 *Security Dashboard*\n",
-        f"🚫 Banned Users: {len(banned)}\n",
-        "📋 *Recent Events:*\n"
+        f"{vs.header('Security Dashboard', '', icon='🔒')}",
+        f"🚫 {uf.bold('Banned Users:')} {len(banned)}",
+        f"\n{uf.bold('📋 Recent Events:')}",
     ]
 
     if logs:
         for log in logs[:10]:
             lines.append(
-                f"• {escape_md(log['action'])} \- User `{log.get('user_id', 'N/A')}`\n"
-                f"  {escape_md(log.get('details', '')[:50])}\n"
+                f"• {log['action']} - User {uf.monospace(str(log.get('user_id', 'N/A')))}\n"
+                f"  {log.get('details', '')[:50]}"
             )
     else:
-        lines.append("_No recent events_")
+        lines.append(f"{uf.italic('No recent events')}")
 
-    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+    await update.message.reply_text("\n".join(lines))
 
 
 async def userstats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -175,7 +174,7 @@ async def userstats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/userstats <user_id>`", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"{uf.bold('Usage:')} /userstats <user_id>")
         return
 
     try:
@@ -198,25 +197,26 @@ async def userstats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     is_banned, ban_reason = await db.is_user_banned(user_id)
 
-    text = (
-        f"👤 *User Statistics*\n\n"
-        f"🆔 ID: `{user_id}`\n"
-        f"👤 Username: @{escape_md(user.get('username', 'N/A'))}\n"
-        f"📛 Name: {escape_md(user.get('first_name', ''))} {escape_md(user.get('last_name', ''))}\n"
-        f"📅 Joined: {escape_md(str(user.get('join_date', 'N/A')))}\n"
-        f"🚫 Banned: {'Yes' if is_banned else 'No'}\n"
-    )
+    text = f"""
+{vs.header('User Statistics', '', icon='👤')}
+
+🆔 {uf.bold('ID:')} {uf.monospace(str(user_id))}
+👤 {uf.bold('Username:')} @{user.get('username', 'N/A')}
+📛 {uf.bold('Name:')} {user.get('first_name', '')} {user.get('last_name', '')}
+📅 {uf.bold('Joined:')} {user.get('join_date', 'N/A')}
+🚫 {uf.bold('Banned:')} {'Yes' if is_banned else 'No'}
+"""
 
     if is_banned:
-        text += f"📝 Ban Reason: {escape_md(ban_reason)}\n"
+        text += f"📝 {uf.bold('Ban Reason:')} {ban_reason}\n"
 
-    text += (
-        f"\n📊 *Transaction Stats:*\n"
-        f"✅ Total Paid: `{paid_count}`\n"
-        f"💰 Total Spent: `Rp {total_spent:,}`\n"
-    )
+    text += f"""
+{uf.bold('📊 Transaction Stats:')}
+✅ {uf.bold('Total Paid:')} {uf.monospace(str(paid_count))}
+💰 {uf.bold('Total Spent:')} {uf.monospace(f"Rp {total_spent:,}".replace(',', '.'))}
+"""
 
-    await update.message.reply_text(text, parse_mode="MarkdownV2")
+    await update.message.reply_text(text)
 
 
 # Handler exports
