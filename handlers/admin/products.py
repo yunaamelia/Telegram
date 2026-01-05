@@ -2,24 +2,33 @@
 Product management handlers for FRIENDS Store Telegram Bot.
 """
 
+from database.db import Database
 from telegram import Update
 from telegram.ext import (
-    ContextTypes,
     CommandHandler,
+    ContextTypes,
     ConversationHandler,
     MessageHandler,
-    filters
+    filters,
 )
-
-from database.db import Database
-from utils.validators import validate_product_code, validate_product_name, validate_price
-from utils.formatters import format_currency, escape_md
 from utils.logger import get_logger
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.validators import (
+    validate_price,
+    validate_product_code,
+    validate_product_name,
+)
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("admin")
 
 # Conversation states
 NAME, DESCRIPTION, PRICE, CONFIRM = range(4)
+
+
+def format_currency_local(amount: int) -> str:
+    """Format currency with dot separator."""
+    return f"Rp {amount:,}".replace(",", ".")
 
 
 async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -37,13 +46,15 @@ async def addproduct_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     args = context.args
     if not args:
-        await update.message.reply_text(
-            "🛍️ *Add Product Wizard*\n\n"
-            "Masukkan product code (lowercase, underscore ok):\n"
-            "Contoh: `github_student_fresh`\n\n"
-            "Ketik /cancel untuk membatalkan.",
-            parse_mode="MarkdownV2"
-        )
+        text = f"""
+{vs.header('Add Product Wizard', '', icon='🛍️')}
+
+Masukkan product code (lowercase, underscore ok):
+Contoh: {uf.monospace('github_student_fresh')}
+
+{uf.italic('Ketik /cancel untuk membatalkan.')}
+"""
+        await update.message.reply_text(text)
         return NAME
 
     # Product code provided as argument
@@ -56,11 +67,7 @@ async def addproduct_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     context.user_data["new_product"] = {"product_code": product_code}
 
-    await update.message.reply_text(
-        f"✅ Product code: `{product_code}`\n\n"
-        "Masukkan nama produk:",
-        parse_mode="MarkdownV2"
-    )
+    await update.message.reply_text(f"✅ Product code: {uf.monospace(product_code)}\n\n" "Masukkan nama produk:")
     return DESCRIPTION
 
 
@@ -95,9 +102,7 @@ async def receive_description(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     context.user_data["new_product"]["name"] = name
 
-    await update.message.reply_text(
-        "Masukkan deskripsi produk (atau ketik `-` untuk skip):"
-    )
+    await update.message.reply_text(f"Masukkan deskripsi produk (atau ketik {uf.monospace('-')} untuk skip):")
     return PRICE
 
 
@@ -111,9 +116,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     context.user_data["new_product"]["description"] = description
 
     await update.message.reply_text(
-        "Masukkan harga (dalam Rupiah):\n"
-        "Contoh: `50000` atau `50.000`",
-        parse_mode="MarkdownV2"
+        f"Masukkan harga (dalam Rupiah):\n" f"Contoh: {uf.monospace('50000')} atau {uf.monospace('50.000')}"
     )
     return CONFIRM
 
@@ -135,10 +138,7 @@ async def confirm_product(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Check if product code exists
     existing = await db.get_product(product_data["product_code"])
     if existing:
-        await update.message.reply_text(
-            f"❌ Product code `{product_data['product_code']}` sudah ada!",
-            parse_mode="MarkdownV2"
-        )
+        await update.message.reply_text(f"❌ Product code {uf.monospace(product_data['product_code'])} sudah ada!")
         context.user_data.clear()
         return ConversationHandler.END
 
@@ -147,17 +147,18 @@ async def confirm_product(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         product_code=product_data["product_code"],
         name=product_data["name"],
         description=product_data.get("description"),
-        price=product_data["price"]
+        price=product_data["price"],
     )
 
-    await update.message.reply_text(
-        f"✅ *Produk Berhasil Ditambahkan\!*\n\n"
-        f"📦 Code: `{escape_md(product_data['product_code'])}`\n"
-        f"🏷️ Name: {escape_md(product_data['name'])}\n"
-        f"💰 Price: `{escape_md(format_currency(product_data['price']))}`",
-        parse_mode="MarkdownV2"
-    )
-    logger.info(f"Product added: code={product_data['product_code']}, name={product_data['name']}, by={update.effective_user.id}")
+    text = f"""
+✅ {uf.bold('Produk Berhasil Ditambahkan!')}
+
+📦 {uf.bold('Code:')} {uf.monospace(product_data['product_code'])}
+🏷️ {uf.bold('Name:')} {product_data['name']}
+💰 {uf.bold('Price:')} {uf.monospace(format_currency_local(product_data['price']))}
+"""
+    await update.message.reply_text(text)
+    logger.info(f"Product added: code={product_data['product_code']}, name={product_data['name']}")
 
     context.user_data.clear()
     return ConversationHandler.END
@@ -178,15 +179,18 @@ async def editproduct_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     args = context.args
     if len(args) < 3:
-        await update.message.reply_text(
-            "📝 *Edit Product*\n\n"
-            "Usage: `/editproduct <product_code> <field> <value>`\n\n"
-            "Fields: `name`, `description`, `price`, `active`\n\n"
-            "Examples:\n"
-            "`/editproduct github_student_fresh price 55000`\n"
-            "`/editproduct github_student_fresh active false`",
-            parse_mode="MarkdownV2"
-        )
+        text = f"""
+{vs.header('Edit Product', '', icon='📝')}
+
+{uf.bold('Usage:')} {uf.monospace('/editproduct <product_code> <field> <value>')}
+
+{uf.bold('Fields:')} name, description, price, active
+
+{uf.bold('Examples:')}
+{uf.monospace('/editproduct github_student_fresh price 55000')}
+{uf.monospace('/editproduct github_student_fresh active false')}
+"""
+        await update.message.reply_text(text)
         return
 
     product_code = args[0].lower()
@@ -197,7 +201,7 @@ async def editproduct_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     product = await db.get_product(product_code)
     if not product:
-        await update.message.reply_text(f"❌ Produk `{product_code}` tidak ditemukan.")
+        await update.message.reply_text(f"❌ Produk {uf.monospace(product_code)} tidak ditemukan.")
         return
 
     update_data = {}
@@ -219,13 +223,15 @@ async def editproduct_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     await db.update_product(product_code, **update_data)
-    logger.info(f"Product updated: code={product_code}, field={field}, value={value}, by={update.effective_user.id}")
+    logger.info(f"Product updated: code={product_code}, field={field}, value={value}")
 
-    await update.message.reply_text(
-        f"✅ Produk `{escape_md(product_code)}` berhasil diupdate\!\n"
-        f"Field: {escape_md(field)} \= {escape_md(value)}",
-        parse_mode="MarkdownV2"
-    )
+    text = f"""
+✅ {uf.bold('Produk berhasil diupdate!')}
+
+📦 {uf.bold('Product:')} {uf.monospace(product_code)}
+📝 {uf.bold('Field:')} {field} = {value}
+"""
+    await update.message.reply_text(text)
 
 
 async def deleteproduct_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -236,7 +242,7 @@ async def deleteproduct_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/deleteproduct <product_code>`", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"{uf.bold('Usage:')} /deleteproduct <product_code>")
         return
 
     product_code = args[0].lower()
@@ -244,16 +250,13 @@ async def deleteproduct_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     product = await db.get_product(product_code)
     if not product:
-        await update.message.reply_text(f"❌ Produk `{product_code}` tidak ditemukan.")
+        await update.message.reply_text(f"❌ Produk {uf.monospace(product_code)} tidak ditemukan.")
         return
 
     await db.delete_product(product_code)
-    logger.info(f"Product deactivated: code={product_code}, by={update.effective_user.id}")
+    logger.info(f"Product deactivated: code={product_code}")
 
-    await update.message.reply_text(
-        f"✅ Produk `{escape_md(product_code)}` telah dinonaktifkan\.",
-        parse_mode="MarkdownV2"
-    )
+    await update.message.reply_text(f"✅ Produk {uf.monospace(product_code)} telah dinonaktifkan.")
 
 
 async def listproducts_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -269,19 +272,16 @@ async def listproducts_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("📦 Tidak ada produk.")
         return
 
-    lines = ["🛍️ *Daftar Produk*\n"]
+    lines = [f"{vs.header('Daftar Produk', '', icon='🛍️')}"]
 
     for p in products:
         status = "🟢" if p["is_active"] else "🔴"
-        name = escape_md(p['name'])
-        code = escape_md(p['product_code'])
-        price = escape_md(format_currency(p['price']))
         lines.append(
-            f"{status} *{name}*\n"
-            f"   `{code}` \| `{price}`\n"
+            f"{status} {uf.bold(p['name'])}\n"
+            f"   {uf.monospace(p['product_code'])} | {uf.monospace(format_currency_local(p['price']))}"
         )
 
-    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+    await update.message.reply_text("\n".join(lines))
 
 
 # Conversation handler for add product
