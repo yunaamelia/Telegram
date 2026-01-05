@@ -10,6 +10,8 @@ from utils.admin_keyboards import AdminKeyboards
 from utils.loading_states import loading
 from utils.logger import get_logger
 from utils.message_templates import MessageTemplates as msg
+from utils.unicode_fonts import UnicodeFonts as uf
+from utils.visual_system import VisualSystem as vs
 
 logger = get_logger("admin.ui")
 
@@ -80,12 +82,12 @@ async def show_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     category = query.data.split(":")[-1]
 
     menu_map = {
-        "stock": (AdminKeyboards.stock_management_menu, "*📦 Stock Management*"),
-        "products": (AdminKeyboards.product_management_menu, "*🛍️ Product Management*"),
-        "transactions": (AdminKeyboards.transaction_management_menu, "*💰 Transactions*"),
-        "users": (AdminKeyboards.user_management_menu, "*👥 User Management*"),
-        "reports": (AdminKeyboards.reports_menu, "*📊 Reports \\& Analytics*"),
-        "system": (AdminKeyboards.system_menu, "*⚙️ System \\& Settings*"),
+        "stock": (AdminKeyboards.stock_management_menu, "📦 Stock Management"),
+        "products": (AdminKeyboards.product_management_menu, "🛍️ Product Management"),
+        "transactions": (AdminKeyboards.transaction_management_menu, "💰 Transactions"),
+        "users": (AdminKeyboards.user_management_menu, "👥 User Management"),
+        "reports": (AdminKeyboards.reports_menu, "📊 Reports & Analytics"),
+        "system": (AdminKeyboards.system_menu, "⚙️ System & Settings"),
     }
 
     if category not in menu_map:
@@ -94,9 +96,10 @@ async def show_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     keyboard_func, title = menu_map[category]
 
-    text = f"{title}\n━━━━━━━━━━━━━━━━━━━━\n\n_Select action:_"
+    text = f"{vs.header(title, '', icon='')}"
+    text += f"\n{uf.italic('Select action:')}"
 
-    await query.edit_message_text(text, parse_mode="MarkdownV2", reply_markup=keyboard_func())
+    await query.edit_message_text(text, reply_markup=keyboard_func())
 
 
 async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -176,9 +179,9 @@ async def handle_fullmenu_toggle(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = AdminKeyboards.main_dashboard_full()
 
-    await query.edit_message_text(
-        "*📂 Full Menu*\n━━━━━━━━━━━━━━━━━━━━\n\n_All categories:_", parse_mode="MarkdownV2", reply_markup=keyboard
-    )
+    text = f"{vs.header('Full Menu', '', icon='📂')}"
+    text += f"\n{uf.italic('All categories:')}"
+    await query.edit_message_text(text, reply_markup=keyboard)
 
 
 async def handle_noop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -214,7 +217,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         await show_dashboard(update, context)
     elif target:
         # Send message with appropriate menu
-        await update.message.reply_text("_Loading\\.\\.\\._", parse_mode="MarkdownV2")
+        await update.message.reply_text(f"{uf.italic('Loading...')}")
         # The actual handler will be called via callback
 
 
